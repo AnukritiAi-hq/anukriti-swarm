@@ -1,14 +1,8 @@
 """Anukriti Swarm — Population Agent Base.
 
 Base class for population-specialized agents. Each population agent
-handles allele frequency lookups and population-specific pharmacogenomic
-contextualization for a single super-population group.
-
-Future responsibilities:
-- MCP-based gnomAD/1000 Genomes frequency lookups
-- Population-specific drug response patterns
-- Ancestry inference from variant profiles
-- Cross-population frequency comparison
+provides allele frequency data for its population group using mock
+data (future: MCP-based gnomAD lookups).
 """
 
 from __future__ import annotations
@@ -18,16 +12,20 @@ from abc import abstractmethod
 from agents.base import BaseAgent
 from agents.models import AgentType, ExecutionMode, PopulationContext
 from agents.state import SwarmState
+from datasets.mock_data import MOCK_POPULATION_AFR, MOCK_POPULATION_EUR, MOCK_POPULATION_SAS
+
+_POPULATION_DATA: dict[str, dict[str, PopulationContext]] = {
+    "SAS": MOCK_POPULATION_SAS,
+    "EUR": MOCK_POPULATION_EUR,
+    "AFR": MOCK_POPULATION_AFR,
+}
 
 
 class BasePopulationAgent(BaseAgent):
     """Abstract base for population-specialized agents.
 
-    Each subclass represents a single super-population (SAS, AFR, EUR, etc.)
-    and provides population-specific allele frequency data and context.
-
-    Execution is DETERMINISTIC for frequency lookups. Future generative
-    capabilities (ancestry inference) will be clearly separated.
+    Looks up allele frequencies from mock data keyed by population code.
+    Returns PopulationContext entries for each target gene's key alleles.
     """
 
     @property
@@ -45,28 +43,16 @@ class BasePopulationAgent(BaseAgent):
         ...
 
     def execute(self, state: SwarmState) -> SwarmState:
-        """Lookup allele frequencies for target genes in this population.
-
-        Current: Returns placeholder population context.
-        Future: Will query gnomAD via MCP Dataset server for real frequencies.
-        """
+        """Lookup allele frequencies for target genes in this population."""
         target_genes = state.get("target_genes", [])
         contexts = list(state.get("population_contexts", []))
 
+        pop_data = _POPULATION_DATA.get(self.population_code, {})
+
         for gene in target_genes:
-            contexts.append(self._lookup_frequency(gene))
+            # Look for any allele key containing this gene name
+            for allele_key, ctx in pop_data.items():
+                if gene in allele_key:
+                    contexts.append(ctx)
 
         return {"population_contexts": contexts}  # type: ignore[return-value]
-
-    def _lookup_frequency(self, gene: str) -> PopulationContext:
-        """Lookup allele frequency for a gene in this population.
-
-        Current: Returns placeholder.
-        Future: MCP call to Dataset server → gnomAD frequency tables.
-        """
-        return PopulationContext(
-            population=self.population_code,
-            allele_frequency=None,  # Placeholder — no real data yet
-            frequency_source=None,
-            is_common=None,
-        )
