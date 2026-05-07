@@ -1,14 +1,8 @@
 """Anukriti Swarm — Chromosome Agent Base.
 
-Base class for chromosome-specialized agents. Each chromosome agent
-handles variant analysis for a specific chromosome, enabling parallel
-execution across the genome.
-
-Future responsibilities:
-- VCF variant filtering by chromosome
-- Gene mapping (variant → gene coordinates)
-- Functional impact annotation via ClinVar/dbSNP
-- Haplotype phasing for star allele assignment
+Base class for chromosome-specialized agents. Filters variants by
+chromosome and produces pharmacogene results using mock star allele
+assignment logic.
 """
 
 from __future__ import annotations
@@ -16,18 +10,22 @@ from __future__ import annotations
 from abc import abstractmethod
 
 from agents.base import BaseAgent
-from agents.models import AgentResult, AgentType, ExecutionMode, VariantRecord
+from agents.models import AgentType, ExecutionMode, PharmacogeneResult, VariantRecord
 from agents.state import SwarmState
+from datasets.mock_data import MOCK_PHARMACOGENE_CYP2C19, MOCK_PHARMACOGENE_CYP2D6
+
+# Mock star allele assignments keyed by gene
+_MOCK_RESULTS: dict[str, PharmacogeneResult] = {
+    "CYP2D6": MOCK_PHARMACOGENE_CYP2D6,
+    "CYP2C19": MOCK_PHARMACOGENE_CYP2C19,
+}
 
 
 class BaseChromosomeAgent(BaseAgent):
     """Abstract base for chromosome-specialized agents.
 
-    Each subclass handles variants on a single chromosome. This enables
-    chromosome-level parallelism — up to 25 agents running concurrently.
-
-    All chromosome operations are DETERMINISTIC (VCF parsing, gene mapping,
-    annotation lookups). No LLM reasoning at this layer.
+    Filters variants to this chromosome, identifies genes, and returns
+    mock pharmacogene results (star alleles, phenotypes, drug impacts).
     """
 
     @property
@@ -45,33 +43,31 @@ class BaseChromosomeAgent(BaseAgent):
         ...
 
     def execute(self, state: SwarmState) -> SwarmState:
-        """Analyze variants on this chromosome.
-
-        Current: Filters variants and returns placeholder results.
-        Future: Will annotate variants, map to genes, and identify haplotypes.
-        """
+        """Analyze variants on this chromosome and produce pharmacogene results."""
         all_variants = state.get("variants", [])
         my_variants = [v for v in all_variants if v.chromosome == self.chromosome]
 
-        result = self._analyze_variants(my_variants)
+        results = list(state.get("pharmacogene_results", []))
+        chr_results = list(state.get("chromosome_results", []))
 
-        results = list(state.get("chromosome_results", []))
-        results.append(result)
-        return {"chromosome_results": results}  # type: ignore[return-value]
+        for variant in my_variants:
+            if variant.gene and variant.gene in _MOCK_RESULTS:
+                results.append(_MOCK_RESULTS[variant.gene])
 
-    def _analyze_variants(self, variants: list[VariantRecord]) -> AgentResult:
-        """Analyze variants on this chromosome.
-
-        Current: Returns placeholder with variant count.
-        Future: Gene mapping, functional annotation, haplotype phasing.
-        """
-        return self.create_result(
-            task_id=f"chr_analysis_{self.chromosome}",
-            output={
-                "chromosome": self.chromosome,
-                "variant_count": len(variants),
-                "genes_identified": [],  # Placeholder
-                "haplotypes": [],  # Placeholder
-            },
-            sources=["VCF_input"],
+        # Also record chromosome-level result
+        chr_results.append(
+            self.create_result(
+                task_id=f"chr_analysis_{self.chromosome}",
+                output={
+                    "chromosome": self.chromosome,
+                    "variant_count": len(my_variants),
+                    "genes": [v.gene for v in my_variants if v.gene],
+                },
+                sources=["VCF_input", "PharmVar_6.0"],
+            )
         )
+
+        return {
+            "pharmacogene_results": results,
+            "chromosome_results": chr_results,
+        }  # type: ignore[return-value]
