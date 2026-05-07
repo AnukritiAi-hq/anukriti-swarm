@@ -1,0 +1,1 @@
+"""Gemini-native integration layer."""
