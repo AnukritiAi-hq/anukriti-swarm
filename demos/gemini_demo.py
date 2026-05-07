@@ -14,7 +14,7 @@ Run: python -m demos.gemini_demo
 
 from __future__ import annotations
 
-from ai.gemini.client import GeminiClient
+from ai.gemini.client import AIClient, AIProvider
 from ai.narrative.generator import NarrativeGenerator
 from ai.orchestration.reasoning import OrchestrationReasoner
 from workflows.pipeline import run_pipeline
@@ -57,7 +57,12 @@ def run_demo() -> None:
     print(f"  {MAGENTA}  LAYER 2: Gemini Cognition (explains, never decides){R}")
     print(f"  {B}{'─' * 68}{R}")
 
-    client = GeminiClient()
+    # Auto-select best available provider
+    import os
+    if os.environ.get("OPENAI_API_KEY"):
+        client = AIClient(AIProvider.OPENAI)
+    else:
+        client = AIClient(AIProvider.GEMINI)
     generator = NarrativeGenerator(client)
     reasoner = OrchestrationReasoner(client)
 
@@ -76,7 +81,7 @@ def run_demo() -> None:
         "verification": v.get("verdict"),
     }
 
-    mode = f"{'(Gemini API)' if client.available else '(fallback mode — set GEMINI_API_KEY for live AI)'}"
+    mode = f"{'(' + client.provider.value + ' — ' + client.model + ')' if client.available else '(fallback mode — set OPENAI_API_KEY or GEMINI_API_KEY)'}"
     print(f"    Mode: {mode}")
     print()
 
