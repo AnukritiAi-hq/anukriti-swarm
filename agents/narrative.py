@@ -1,41 +1,21 @@
 """Anukriti Swarm — Narrative Agent.
 
-Synthesizes verified findings into human-readable research reports.
-Operates in GENERATIVE mode for narrative synthesis, with DETERMINISTIC
-components for citation assembly and confidence labeling.
-
-Future responsibilities:
-- Clinical narrative synthesis from structured findings
-- Evidence summarization with source attribution
-- Confidence communication (ESTABLISHED vs INFERRED labels)
-- Structured report formatting (per-gene sections)
-- Citation and reference assembly
-
-Constraint: Only operates on VERIFIED data. Never generates unsupported claims.
+Synthesizes verified findings into a structured pharmacogenomic report.
+Uses template-based generation (future: LLM synthesis with grounding).
 """
 
 from __future__ import annotations
 
 from agents.base import BaseAgent
-from agents.models import AgentType, ExecutionMode, TaskStatus
+from agents.models import AgentType, ExecutionMode, PharmacogeneResult, PopulationContext, TaskStatus
 from agents.state import SwarmState
 
 
 class NarrativeAgent(BaseAgent):
-    """Narrative synthesis agent — the final output layer.
+    """Narrative agent — generates human-readable report from verified findings.
 
-    Transforms verified, structured pharmacogenomic findings into
-    a human-readable research report. This is the only agent that
-    produces user-facing text.
-
-    Input: Verified findings from upstream agents (chromosome, pharmacogene,
-    population, retrieval results — all post-verification).
-
-    Output: Structured report with labeled confidence, citations, and
-    explicit limitations.
-
-    Safety: Only operates on verified data. Every claim in the narrative
-    must trace back to a verified finding or cited source.
+    Template-based synthesis that formats pharmacogene results, population
+    context, and evidence into a structured research report.
     """
 
     @property
@@ -47,21 +27,13 @@ class NarrativeAgent(BaseAgent):
         return ExecutionMode.GENERATIVE
 
     def execute(self, state: SwarmState) -> SwarmState:
-        """Generate narrative report from verified findings.
-
-        Current: Returns placeholder narrative structure.
-        Future: Will use LLM to synthesize findings into readable report,
-        with structured output enforcement and citation linking.
-        """
+        """Generate narrative report from verified findings."""
         pharmacogene_results = state.get("pharmacogene_results", [])
         population_contexts = state.get("population_contexts", [])
         evidence = state.get("evidence", [])
-        verification_results = state.get("verification_results", [])
 
-        narrative = self._synthesize_report(
-            pharmacogene_results, population_contexts, evidence
-        )
-        citations = self._assemble_citations(evidence)
+        narrative = self._build_report(pharmacogene_results, population_contexts, evidence)
+        citations = [e["source"] for e in evidence]
 
         return {
             "narrative": narrative,
@@ -70,25 +42,53 @@ class NarrativeAgent(BaseAgent):
             "status": TaskStatus.DONE,
         }  # type: ignore[return-value]
 
-    def _synthesize_report(
+    def _build_report(
         self,
-        pharmacogene_results: list,
-        population_contexts: list,
-        evidence: list,
+        results: list[PharmacogeneResult],
+        contexts: list[PopulationContext],
+        evidence: list[dict],
     ) -> str:
-        """Synthesize findings into narrative report.
+        """Build structured report from findings."""
+        sections = ["# Pharmacogenomic Analysis Report", ""]
+        sections.append("> ⚠️ Research only — not for clinical decision-making.")
+        sections.append("")
 
-        Current: Returns placeholder text.
-        Future: LLM-based synthesis with structured output schema,
-        confidence labels, and mandatory source attribution.
-        """
-        return "[PLACEHOLDER] Pharmacogenomic analysis report pending implementation."
+        # Per-gene findings
+        sections.append("## Findings")
+        sections.append("")
+        for pgx in results:
+            sections.append(f"### {pgx.gene}")
+            sections.append(f"- **Diplotype:** {pgx.diplotype} [ESTABLISHED]")
+            sections.append(f"- **Phenotype:** {pgx.phenotype} [ESTABLISHED]")
+            sections.append(f"- **Drugs affected:** {', '.join(pgx.drugs_affected)}")
+            sections.append(f"- **Source:** {pgx.guideline_source}")
+            sections.append("")
 
-    def _assemble_citations(self, evidence: list) -> list[str]:
-        """Assemble citations from retrieved evidence.
+        # Population context
+        if contexts:
+            sections.append("## Population Context")
+            sections.append("")
+            for ctx in contexts:
+                freq = f"{ctx.allele_frequency:.2%}" if ctx.allele_frequency else "unknown"
+                sections.append(
+                    f"- {ctx.population}: allele frequency {freq} ({ctx.frequency_source})"
+                )
+            sections.append("")
 
-        Current: Returns empty list.
-        Future: Extract PMIDs, guideline IDs, and database versions
-        from evidence passages and format as citations.
-        """
-        return []
+        # Evidence
+        if evidence:
+            sections.append("## Supporting Evidence")
+            sections.append("")
+            for e in evidence:
+                sections.append(f"- [{e['source']}] {e['title']}")
+                sections.append(f"  > {e['passage']}")
+                sections.append("")
+
+        # Limitations
+        sections.append("## Limitations")
+        sections.append("")
+        sections.append("- Based on detected variants only; undetected variants may alter results")
+        sections.append("- Population frequencies are reference values, individual may vary")
+        sections.append("- This is a research output, not clinical guidance")
+
+        return "\n".join(sections)
