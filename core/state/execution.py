@@ -92,7 +92,7 @@ class PipelineState(BaseModel):
     citations: list[str] = Field(default_factory=list)
 
     # --- Execution Metadata ---
-    stage: PipelineStage = PipelineStage.PENDING
+    stage: PipelineStage = PipelineStage.INGESTION
     status: PipelineStatus = PipelineStatus.PENDING
     errors: list[str] = Field(default_factory=list)
     audit_trail: list[AuditEntry] = Field(default_factory=list)
