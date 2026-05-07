@@ -1,0 +1,152 @@
+/* Anukriti Swarm — Scientific Research Interface */
+/* Design: dark theme, monospace accents, clinical precision */
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2332;
+  --border: #2d3748;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-dim: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --font-sans: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, #0f172a 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 2rem;
+  text-align: center;
+}
+.header h1 { font-size: 2rem; letter-spacing: -0.02em; }
+.subtitle { color: var(--text-secondary); margin-top: 0.25rem; }
+.badge {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--accent-red);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--accent-red);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Container */
+.container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: opacity 0.3s;
+}
+.card h2 {
+  font-size: 1.1rem;
+  color: var(--accent-cyan);
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+.card.hidden { display: none; }
+
+/* Input Grid */
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.input-group label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.input-group select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+/* Button */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+
+/* Trace */
+.trace-container { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.8; }
+.trace-line { padding: 0.25rem 0; border-left: 2px solid var(--border); padding-left: 1rem; margin-left: 0.5rem; }
+.trace-line.success { border-color: var(--accent-green); }
+.trace-line.warning { border-color: var(--accent-yellow); }
+.trace-line.error { border-color: var(--accent-red); }
+
+/* Metrics Grid */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.metric-card { background: var(--bg-secondary); border-radius: var(--radius); padding: 1rem; text-align: center; }
+.metric-value { font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); color: var(--accent-cyan); }
+.metric-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-top: 0.25rem; }
+
+/* Confidence Bars */
+.confidence-bars { display: flex; flex-direction: column; gap: 0.75rem; }
+.conf-bar { display: flex; align-items: center; gap: 1rem; }
+.conf-label { width: 120px; font-size: 0.8rem; color: var(--text-secondary); text-align: right; }
+.conf-track { flex: 1; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.conf-fill.high { background: var(--accent-green); }
+.conf-fill.moderate { background: var(--accent-yellow); }
+.conf-fill.low { background: var(--accent-red); }
+.conf-value { width: 50px; font-family: var(--font-mono); font-size: 0.8rem; }
+
+/* Tabs */
+.report-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.tab {
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.tab.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+
+/* Report Content */
+.report-content { font-size: 0.9rem; line-height: 1.7; }
+.report-content .established { border-left: 3px solid var(--accent-green); padding-left: 0.75rem; margin: 0.5rem 0; }
+.report-content .narrative { border-left: 3px solid var(--accent-purple); padding-left: 0.75rem; margin: 0.5rem 0; }
+.report-content .citation { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-cyan); }
+
+/* Viz Container */
+.viz-container { min-height: 200px; display: flex; align-items: center; justify-content: center; }
+
+/* Footer */
+.footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.8rem; }
+.dim { opacity: 0.6; margin-top: 0.25rem; }
