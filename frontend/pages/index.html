@@ -54,6 +54,19 @@
                     </select>
                 </div>
             </div>
+            <div class="input-group">
+                    <label for="provider">AI Provider</label>
+                    <select id="provider">
+                        <option value="gemini">Gemini 2.0 Flash</option>
+                        <option value="openai">OpenAI GPT-4o-mini</option>
+                        <option value="none">No AI (deterministic only)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="apikey">API Key (optional)</label>
+                    <input type="password" id="apikey" placeholder="Enter key for live AI" style="width:100%;padding:0.6rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-family:var(--font-mono);font-size:0.85rem;">
+                </div>
+            </div>
             <button class="btn-primary" onclick="runAnalysis()">Activate Swarm</button>
         </section>
 

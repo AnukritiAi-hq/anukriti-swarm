@@ -25,6 +25,11 @@ const MOCK_RESULT = {
 };
 
 function runAnalysis() {
+  const provider = document.getElementById("provider").value;
+  const apikey = document.getElementById("apikey").value;
+  MOCK_RESULT.provider = provider;
+  MOCK_RESULT.apikey_set = apikey.length > 0;
+
   const sections = ["swarm-activity", "orchestration-viz", "population-section",
     "pharmacogene-section", "evidence-section", "verification-section",
     "confidence-section", "narrative-section", "provenance-section"];
@@ -140,12 +145,15 @@ function renderNarrative() {
 }
 
 function renderProvenance() {
+  const provider = MOCK_RESULT.provider || "gemini";
+  const providerLabel = {gemini: "Gemini 2.0 Flash", openai: "OpenAI GPT-4o-mini", none: "None (deterministic only)"}[provider];
   document.getElementById("provenance-output").innerHTML = `
     <div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);line-height:1.8">
       <div>Correlation: ${MOCK_RESULT.correlation_id}</div>
+      <div>AI Provider: <strong>${providerLabel}</strong></div>
       <div>Rule Engine: cpic_activity_score_v1</div>
       <div>Guideline: CPIC:CYP2C19:clopidogrel:2022</div>
-      <div>Origin: deterministic</div>
+      <div>Origin: deterministic (core) + generative (explanation)</div>
       <div>Verification: 6/6 checks passed</div>
       <div>Escalation: autonomous</div>
       <div>Citations: ${MOCK_RESULT.evidence.citations.join(", ")}</div>
