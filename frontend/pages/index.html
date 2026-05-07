@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anukriti Swarm — Distributed Genomic Intelligence</title>
+    <link rel="stylesheet" href="../components/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🧬 Anukriti Swarm</h1>
+            <p class="subtitle">Distributed Multi-Agent Genomic Intelligence</p>
+            <span class="badge">Research Only</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Query Input Section -->
+        <section class="card" id="query-section">
+            <h2>Genomic Query</h2>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="gene">Gene</label>
+                    <select id="gene">
+                        <option value="CYP2C19">CYP2C19</option>
+                        <option value="CYP2D6">CYP2D6</option>
+                        <option value="HLA-B">HLA-B</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="drug">Drug</label>
+                    <select id="drug">
+                        <option value="clopidogrel">Clopidogrel</option>
+                        <option value="codeine">Codeine</option>
+                        <option value="carbamazepine">Carbamazepine</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="population">Ancestry</label>
+                    <select id="population">
+                        <option value="SAS">South Asian</option>
+                        <option value="EUR">European</option>
+                        <option value="AFR">African</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="alleles">Diplotype</label>
+                    <select id="alleles">
+                        <option value="*2/*2">*2/*2 (Poor Metabolizer)</option>
+                        <option value="*1/*2">*1/*2 (Intermediate)</option>
+                        <option value="*1/*1">*1/*1 (Normal)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="runAnalysis()">Activate Swarm</button>
+        </section>
+
+        <!-- Swarm Activity -->
+        <section class="card hidden" id="swarm-activity">
+            <h2>Swarm Activity</h2>
+            <div class="trace-container" id="trace-output"></div>
+        </section>
+
+        <!-- Agent Orchestration Visualization -->
+        <section class="card hidden" id="orchestration-viz">
+            <h2>Agent Orchestration</h2>
+            <div class="viz-container" id="agent-graph"></div>
+        </section>
+
+        <!-- Population Context -->
+        <section class="card hidden" id="population-section">
+            <h2>Population Context</h2>
+            <div class="metrics-grid" id="population-output"></div>
+        </section>
+
+        <!-- Pharmacogene Reasoning -->
+        <section class="card hidden" id="pharmacogene-section">
+            <h2>Pharmacogene Reasoning</h2>
+            <div id="pharmacogene-output"></div>
+        </section>
+
+        <!-- Evidence & Citations -->
+        <section class="card hidden" id="evidence-section">
+            <h2>Evidence Retrieval</h2>
+            <div id="evidence-output"></div>
+        </section>
+
+        <!-- Verification -->
+        <section class="card hidden" id="verification-section">
+            <h2>Verification & Safety</h2>
+            <div id="verification-output"></div>
+        </section>
+
+        <!-- Confidence Propagation -->
+        <section class="card hidden" id="confidence-section">
+            <h2>Confidence Propagation</h2>
+            <div class="confidence-bars" id="confidence-output"></div>
+        </section>
+
+        <!-- Narrative Report -->
+        <section class="card hidden" id="narrative-section">
+            <h2>Analysis Report</h2>
+            <div class="report-tabs">
+                <button class="tab active" onclick="showTab('patient')">Patient</button>
+                <button class="tab" onclick="showTab('researcher')">Researcher</button>
+                <button class="tab" onclick="showTab('audit')">Audit</button>
+            </div>
+            <div class="report-content" id="narrative-output"></div>
+        </section>
+
+        <!-- Provenance -->
+        <section class="card hidden" id="provenance-section">
+            <h2>Provenance & Auditability</h2>
+            <div id="provenance-output"></div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Anukriti Swarm — Research Only. Not for clinical decision-making.</p>
+        <p class="dim">Deterministic reasoning. Evidence-grounded. Population-aware.</p>
+    </footer>
+
+    <script src="../visualization/swarm-viz.js"></script>
+</body>
+</html>
