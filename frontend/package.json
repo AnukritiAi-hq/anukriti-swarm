@@ -1,0 +1,10 @@
+{
+  "name": "anukriti-swarm-frontend",
+  "version": "0.1.0",
+  "description": "Research-grade interface for Anukriti Swarm genomic intelligence",
+  "private": true,
+  "scripts": {
+    "dev": "open pages/index.html || xdg-open pages/index.html",
+    "serve": "python -m http.server 3000"
+  }
+}
