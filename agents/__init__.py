@@ -12,8 +12,9 @@ analysis swarm. Agents are organized by domain:
 """
 
 from agents.base import BaseAgent
-from agents.models import AgentResult, AgentTask, AgentType, ExecutionMode, SwarmState
+from agents.models import AgentResult, AgentTask, AgentType, ExecutionMode
 from agents.orchestrator import OrchestratorAgent
+from agents.state import SwarmState
 
 __all__ = [
     "BaseAgent",
