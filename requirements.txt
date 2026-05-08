@@ -18,6 +18,10 @@ numpy==1.26.4
 # Vector Store
 qdrant-client==1.9.1
 
+# MCP persistence (optional — all MCP services fall back to in-memory
+# when pymongo is not installed or MONGODB_URI is unset)
+# pymongo==4.8.0
+
 # Dev
 pytest==8.2.0
 ruff==0.4.4
