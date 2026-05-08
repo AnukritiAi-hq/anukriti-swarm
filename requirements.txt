@@ -18,9 +18,9 @@ numpy==1.26.4
 # Vector Store
 qdrant-client==1.9.1
 
-# MCP persistence (optional — all MCP services fall back to in-memory
-# when pymongo is not installed or MONGODB_URI is unset)
-# pymongo==4.8.0
+# MCP persistence (pymongo is now a first-class dependency; the MCP
+# layer still falls back to in-memory when MONGODB_URI is not set)
+pymongo==4.17.0
 
 # Dev
 pytest==8.2.0
