@@ -100,6 +100,13 @@ from integrations.mcp.provenance import (
 )
 from integrations.mcp.evidence import EVIDENCE_COLLECTION, MCPEvidenceCache
 
+# --- Aggregator + persistence hook ---
+from integrations.mcp.retrieval import MCPRetrieval, ReplayBundle, RunLookup
+from integrations.mcp.persistence_hook import (
+    MCPPersistenceHook,
+    PersistenceReport,
+)
+
 
 # MongoDB backend stays lazy — import only if pymongo is available.
 # Users who want it directly can: ``from integrations.mcp.backends.mongo
@@ -139,6 +146,12 @@ __all__ = [
     "MCPEvidenceCache",
     # Service records
     "ProvenanceRecord",
+    # Aggregator + persistence hook
+    "MCPRetrieval",
+    "RunLookup",
+    "ReplayBundle",
+    "MCPPersistenceHook",
+    "PersistenceReport",
     # Collection constants
     "EXECUTIONS_COLLECTION",
     "TRACES_COLLECTION",
