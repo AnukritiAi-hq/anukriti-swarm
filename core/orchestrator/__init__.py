@@ -38,6 +38,13 @@ from core.orchestrator.boundary import (
     GenerativeBoundary,
     GenerativeBoundaryViolation,
 )
+from core.orchestrator.conflict import (
+    Conflict,
+    ConflictKind,
+    ConflictResolver,
+    EscalationTier,
+    Resolution,
+)
 from core.orchestrator.context import (
     OrchestrationPhase,
     SwarmExecutionContext,
@@ -67,6 +74,12 @@ __all__ = [
     "GenerativeAction",
     "GenerativeBoundaryViolation",
     "DEFAULT_BOUNDARY",
+    # conflict resolution / escalation
+    "ConflictResolver",
+    "Conflict",
+    "ConflictKind",
+    "EscalationTier",
+    "Resolution",
     # pipeline pieces
     "ContextAssembler",
     "WorkflowPlanner",

@@ -51,6 +51,11 @@ from core.orchestrator.boundary import (
     GenerativeBoundary,
     GenerativeBoundaryViolation,
 )
+from core.orchestrator.conflict import (
+    ConflictResolver,
+    EscalationTier,
+    Resolution,
+)
 from core.orchestrator.context import (
     OrchestrationPhase,
     SwarmExecutionContext,
@@ -81,6 +86,11 @@ class CoordinationResult:
     # Escalation reason, if the coordinator tripped the escalation path.
     escalation_reason: str = ""
 
+    # Cross-run conflict analysis (populated after pipeline + verification,
+    # before synthesis). ``None`` in single-run mode where conflicts
+    # cannot be detected by definition.
+    resolution: Resolution | None = None
+
     # Total coordinator wall time (all phases, not just LLM).
     duration_ms: float = 0.0
 
@@ -106,10 +116,12 @@ class ExecutionCoordinator:
         ai_client: AIClient | None = None,
         boundary: GenerativeBoundary | None = None,
         pipeline_runner: PipelineRunner | None = None,
+        conflict_resolver: ConflictResolver | None = None,
     ) -> None:
         self.ai = ai_client or _default_ai_client()
         self.boundary = boundary or DEFAULT_BOUNDARY
         self._runner = pipeline_runner
+        self.resolver = conflict_resolver or ConflictResolver()
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -158,11 +170,20 @@ class ExecutionCoordinator:
             result.duration_ms = (time.perf_counter() - wall) * 1000
             return result
 
-        # 3. Comparative analysis (deterministic aggregation)
+        # 3. Cross-run conflict analysis (pure, cheap)
+        self._resolve_conflicts(ctx, result)
+        if result.resolution and result.resolution.should_block_synthesis:
+            reason = f"conflict blocked synthesis: {result.resolution.summary()}"
+            self._escalate(ctx, trace, reason=reason)
+            result.escalation_reason = reason
+            result.duration_ms = (time.perf_counter() - wall) * 1000
+            return result
+
+        # 4. Comparative analysis (deterministic aggregation)
         if any(d.step.action == "comparative_analysis" for d in routing.decisions):
             self._build_comparison_rows(ctx, result)
 
-        # 4. Narrative synthesis (generative — boundary-guarded)
+        # 5. Narrative synthesis (generative — boundary-guarded)
         if any(d.step.action == "narrative_synthesis" for d in routing.decisions):
             ctx.mark_phase(OrchestrationPhase.SYNTHESIZING)
             self._synthesize(ctx, result)
@@ -171,6 +192,41 @@ class ExecutionCoordinator:
         result.duration_ms = (time.perf_counter() - wall) * 1000
         trace.mark_complete(result.duration_ms)
         return result
+
+    # ------------------------------------------------------------------
+    # Step 2.5 — Cross-run conflict resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_conflicts(
+        self, ctx: SwarmExecutionContext, result: CoordinationResult
+    ) -> None:
+        """Run the conflict resolver and append a trace step.
+
+        Populates ``result.resolution``. BLOCK tier is honored by the
+        caller (``execute``); ADVISORY and REVIEW tiers are recorded
+        but allow synthesis to proceed — the narratives will surface
+        them to the human reader.
+        """
+        trace = ctx.ensure_trace()
+        t0 = time.perf_counter()
+        resolution = self.resolver.resolve(ctx, result)
+        result.resolution = resolution
+
+        tier_to_status = {
+            EscalationTier.NONE: "success",
+            EscalationTier.ADVISORY: "success",
+            EscalationTier.REVIEW: "warning",
+            EscalationTier.BLOCK: "error",
+        }
+        trace.record_step(
+            "conflict_resolution",
+            origin="deterministic",
+            duration_ms=(time.perf_counter() - t0) * 1000,
+            status=tier_to_status[resolution.tier],
+            tier=resolution.tier.value,
+            conflicts=[c.to_dict() for c in resolution.conflicts],
+            notes=resolution.notes,
+        )
 
     # ------------------------------------------------------------------
     # Step 1 — Pipeline execution
