@@ -1,10 +1,28 @@
-"""Anukriti Swarm — Orchestrator Agent.
+"""Anukriti Swarm — Base Orchestrator Agent (LangGraph node).
 
-The central coordinator that decomposes queries, identifies target genes
-and chromosomes from variants, and prepares state for downstream agents.
+The ``OrchestratorAgent`` is the original, lightweight orchestrator used as
+the first node in the LangGraph pipeline. It performs pure, deterministic
+routing work:
 
-In the LangGraph pipeline, this is the first node: it reads raw input
-(variants, population, drug) and populates routing metadata for the DAG.
+- Assigns a correlation_id for tracing
+- Extracts target genes from variant records
+- Extracts target chromosomes for parallel analysis
+- Sets pipeline stage metadata
+
+This agent is the **deterministic skeleton** of the orchestration layer.
+It is intentionally kept small and dependency-light so it can run inside
+any pipeline without pulling in the generative Gemini stack.
+
+For Gemini-powered high-level orchestration (query decomposition,
+multi-agent coordination, comparative analysis) see:
+
+- ``agents.orchestrator.gemini_orchestrator.GeminiOrchestrator``
+- ``core.orchestrator`` (framework primitives)
+
+Layering:
+    agents.orchestrator.agent.OrchestratorAgent   ← low-level graph node
+    agents.orchestrator.gemini_orchestrator       ← high-level framework
+    core.orchestrator.*                           ← reusable primitives
 """
 
 from __future__ import annotations
