@@ -69,6 +69,7 @@ from observability.graph import (
 )
 from observability.visualizer import TraceVisualizer, VisualBundle
 from observability.replay import FailureAnalyzer, FailureSummary, TraceReplayer
+from observability.cinematic import CinematicConfig, CinematicPlayer, NarratorHook
 
 __all__: list[str] = [
     # Tracer
@@ -97,4 +98,8 @@ __all__: list[str] = [
     "TraceReplayer",
     "FailureAnalyzer",
     "FailureSummary",
+    # Cinematic
+    "CinematicPlayer",
+    "CinematicConfig",
+    "NarratorHook",
 ]
