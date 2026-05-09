@@ -397,16 +397,52 @@ class SwarmRuntime:
 
 
 def _phenotype_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
-    if ctx.gene == "CYP2C19":
-        return {"gene": "CYP2C19", "phenotype": "Poor Metabolizer",
-                "rule_id": "cpic.activity_score", "origin": "deterministic"}
-    if ctx.gene == "CYP2D6":
-        return {"gene": "CYP2D6", "phenotype": "Poor Metabolizer",
-                "rule_id": "cpic.activity_score", "origin": "deterministic"}
-    if ctx.gene == "HLA-B":
-        return {"gene": "HLA-B", "phenotype": "HLA-B*15:02 positive",
-                "rule_id": "hla_b.risk_allele", "origin": "deterministic"}
-    return {}
+    """Real phenotype inference from the input genotype.
+
+    - CYP genes go through the CPIC activity-score rule in
+      rules.phenotype_rules.infer_phenotype. Unknown alleles yield
+      'Indeterminate' with confidence=0 — which correctly causes
+      the sufficiency layer's PHENOTYPE facet to read as MISSING.
+    - HLA-B uses the carrier-status agent (agents.pharmacogene.hla_b),
+      since HLA-B is a binary risk model, not a metabolizer spectrum.
+      Presence of at least one '*15:02' allele => positive.
+    """
+
+    gene = ctx.gene
+    a1 = (ctx.genotype.split("/")[0] if "/" in ctx.genotype else ctx.genotype).strip()
+    a2 = (ctx.genotype.split("/")[1] if "/" in ctx.genotype else "").strip()
+
+    if gene == "HLA-B":
+        from agents.pharmacogene.hla_b import HLABAgent
+        has_15_02 = "*15:02" in (a1, a2) or "15:02" in a1 or "15:02" in a2
+        result = HLABAgent().assess_risk(has_15_02)
+        return {
+            "gene": "HLA-B",
+            "phenotype": result.risk_phenotype,
+            "rule_id": "hla_b.risk_allele",
+            "origin": "deterministic",
+            "confidence": result.confidence,
+            "allele_status": result.allele_status,
+        }
+
+    # CYP2C19 / CYP2D6 / anything else covered by the activity-score rule.
+    from rules.phenotype_rules import infer_phenotype
+    inference = infer_phenotype(gene, a1 or "*1", a2 or "*1")
+    # Translate the rule_version (e.g. 'cpic_activity_score_v1') into the
+    # dotted rule_id the coverage analyzer's PHENOTYPE-facet check expects
+    # (startswith('cpic.') or 'hla_b.'). The dotted form is the project's
+    # canonical rule-id convention; the underscored form is internal to
+    # the rule engine.
+    rule_id = "cpic.activity_score" if "cpic" in inference.rule_version.lower() else inference.rule_version
+    return {
+        "gene": gene,
+        "phenotype": inference.phenotype,
+        "rule_id": rule_id,
+        "origin": "deterministic",
+        "confidence": inference.confidence,
+        "activity_score": inference.activity_score,
+        "diplotype": inference.diplotype,
+    }
 
 
 def _pop_result_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
