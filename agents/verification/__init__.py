@@ -11,13 +11,23 @@ so every existing caller keeps working unchanged. The legacy class is
 kept intact for the ``workflows.pharmacogenomic_pipeline`` call site
 that wires it into the LangGraph-style pipeline.
 
-New-style callers use ``BiomedicalVerificationAgent`` (landing in a
-follow-up commit) which composes the ``core.verification`` engines
-and emits a list of ``VerificationTrace`` records per run.
+New-style callers use ``BiomedicalVerificationAgent`` (in ``agent``)
+which composes the four ``core.verification`` engines (claim
+validator, grounding engine, safety constraint engine, provenance
+validator) and emits a ``VerificationOutcome`` — the canonical
+object the safety demo + orchestrator consume.
 """
 
 from __future__ import annotations
 
+from agents.verification.agent import (
+    BiomedicalVerificationAgent,
+    VerificationOutcome,
+)
 from agents.verification.legacy_agent import VerificationAgent
 
-__all__ = ["VerificationAgent"]
+__all__ = [
+    "VerificationAgent",
+    "BiomedicalVerificationAgent",
+    "VerificationOutcome",
+]
