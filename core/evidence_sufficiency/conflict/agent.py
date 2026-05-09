@@ -165,8 +165,13 @@ _ACTION_KEYWORDS: dict[RecommendationAction, tuple[str, ...]] = {
 }
 
 
-def _classify_action(text: str) -> RecommendationAction:
-    """Map recommendation text to a closed action enum. Deterministic."""
+def classify_action(text: str) -> RecommendationAction:
+    """Map recommendation text to a closed action enum. Deterministic.
+
+    Priority order: contraindicated > avoid > consider_alt > use —
+    the most restrictive match wins, mirroring safety hierarchy.
+    Unrecognised text returns ``RecommendationAction.UNKNOWN``.
+    """
 
     if not text:
         return RecommendationAction.UNKNOWN
@@ -183,6 +188,10 @@ def _classify_action(text: str) -> RecommendationAction:
             if kw in lowered:
                 return action
     return RecommendationAction.UNKNOWN
+
+
+# Back-compat alias for callers that imported the underscored name.
+_classify_action = classify_action
 
 
 # ---------------------------------------------------------------------------

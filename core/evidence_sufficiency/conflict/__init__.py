@@ -44,6 +44,7 @@ from core.evidence_sufficiency.conflict.agent import (
     ConflictKind,
     ConflictSeverity,
     RecommendationAction,
+    classify_action,
 )
 
 __all__ = [
@@ -52,4 +53,5 @@ __all__ = [
     "ConflictKind",
     "ConflictSeverity",
     "RecommendationAction",
+    "classify_action",
 ]

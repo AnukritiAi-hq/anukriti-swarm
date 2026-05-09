@@ -32,8 +32,12 @@ from core.evidence_sufficiency.verifier.result import (
     EvidenceVerdict,
     EvidenceVerificationResult,
 )
+from core.evidence_sufficiency.verifier.set_level import (
+    SetLevelEvidenceVerifier,
+)
 
 __all__ = [
     "EvidenceVerdict",
     "EvidenceVerificationResult",
+    "SetLevelEvidenceVerifier",
 ]

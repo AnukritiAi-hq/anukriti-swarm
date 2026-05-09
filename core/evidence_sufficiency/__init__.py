@@ -113,6 +113,7 @@ from core.evidence_sufficiency.sufficiency import (
 from core.evidence_sufficiency.verifier import (
     EvidenceVerdict,
     EvidenceVerificationResult,
+    SetLevelEvidenceVerifier,
 )
 
 __all__ = [
@@ -141,4 +142,5 @@ __all__ = [
     # verifier
     "EvidenceVerdict",
     "EvidenceVerificationResult",
+    "SetLevelEvidenceVerifier",
 ]
