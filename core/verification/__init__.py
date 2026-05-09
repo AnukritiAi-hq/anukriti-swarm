@@ -58,6 +58,13 @@ from core.verification.provenance_validator import (
     ProvenanceReport,
     ProvenanceValidator,
 )
+from core.verification.escalation_workflow import (
+    EscalationAction,
+    EscalationPlan,
+    EscalationStep,
+    EscalationWorkflow,
+    annotate_traces,
+)
 
 __all__ = [
     "VerificationScore",
@@ -75,4 +82,9 @@ __all__ = [
     "SafetyDecision",
     "ProvenanceValidator",
     "ProvenanceReport",
+    "EscalationWorkflow",
+    "EscalationPlan",
+    "EscalationStep",
+    "EscalationAction",
+    "annotate_traces",
 ]
