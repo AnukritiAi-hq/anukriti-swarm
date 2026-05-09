@@ -19,8 +19,12 @@ Public surface (populated through phase 2):
                                   (commit 6)
     PopulationAwareRetriever      re-ranks by population alignment
                                   (commit 6)
-    GraphRetriever                thin KG adapter (commit 7)
-    EvidenceSelector              diversity + dedup (commit 7)
+    GraphRetriever                KG strategy — public surface final,
+                                  internals are a documented phase-3
+                                  stub (commit 7)
+    EvidenceSelector              deterministic diversity + dedup
+                                  merger across strategy outputs
+                                  (commit 7)
     AdaptiveRetrievalController   sufficiency-aware loop (commit 8)
 
 Scope-wise this subpackage is still pharmacogenomic-only. The
@@ -37,11 +41,17 @@ from retrieval.multi_strategy.biomedical_retriever import (
     PopulationAwareRetriever,
     RetrievalStrategyResult,
 )
+from retrieval.multi_strategy.graph_and_selector import (
+    EvidenceSelector,
+    GraphRetriever,
+)
 
 __all__ = [
     "BiomedicalQuery",
     "BiomedicalRetriever",
     "DenseSemanticRetriever",
+    "EvidenceSelector",
+    "GraphRetriever",
     "PopulationAwareRetriever",
     "RetrievalStrategyResult",
 ]
