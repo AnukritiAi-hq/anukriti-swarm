@@ -360,6 +360,8 @@ function renderFinalizeFromReport(report) {
   // Terminal call once the run completes; fills any panels that
   // weren't populated inline and refreshes the full narrative /
   // provenance / orchestration panels with the aggregated report.
+  renderSufficiencyPanel(report);
+  renderPopulationIntel(report);
   renderOrchestrationFromReport(report);
   renderPharmacogeneFromReport(report);
   renderNarrativeFromReport(report);
@@ -388,7 +390,8 @@ async function runAnalysisFetch(scope) {
 
 function revealSections() {
   const sections = [
-    "swarm-activity", "orchestration-viz", "population-section",
+    "swarm-activity", "sufficiency-section", "population-intel-section",
+    "orchestration-viz", "population-section",
     "pharmacogene-section", "evidence-section", "verification-section",
     "confidence-section", "narrative-section", "provenance-section",
   ];
@@ -419,6 +422,8 @@ function renderRunError(err) {
 
 function renderFromReport(report, events) {
   renderTraceFromEvents(events || []);
+  renderSufficiencyPanel(report);
+  renderPopulationIntel(report);
   renderOrchestrationFromReport(report);
   renderPopulationFromReport(report);
   renderPharmacogeneFromReport(report);
@@ -427,6 +432,183 @@ function renderFromReport(report, events) {
   renderConfidenceFromReport(report);
   renderNarrativeFromReport(report);
   renderProvenanceFromReport(report);
+}
+
+// ---------------------------------------------------------------------------
+// Dedicated panels — Evidence Sufficiency + Population Intelligence
+// ---------------------------------------------------------------------------
+
+function renderSufficiencyPanel(report) {
+  const el = document.getElementById("sufficiency-output");
+  if (!el) return;
+  const ev = report.evidence_sufficiency || {};
+  const unc = report.uncertainty_analysis || {};
+  const rec = report.final_recommendation || {};
+
+  const decision = ev.sufficiency_decision || "?";
+  const verdict = ev.verdict || "?";
+  const uncertainty = unc.uncertainty_score || "?";
+  const gate = rec.allows_synthesis;
+
+  // Colour based on decision family.
+  const decisionColor = decisionColorFor(decision);
+  const verdictColor = verdictColorFor(verdict);
+  const uncertaintyColor = uncertaintyColorFor(uncertainty);
+  const gateColor = gate ? "var(--accent-green)" : "var(--accent-red)";
+  const gateLabel = gate ? "SYNTHESIS ALLOWED" : "SYNTHESIS BLOCKED";
+
+  const trace = ev.trace || {};
+  const missing = ev.missing_facets || trace.missing_hops || [];
+  const coverage = Math.round((ev.coverage_ratio || 0) * 100);
+
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-value" style="color:${decisionColor}">${decision}</div>
+        <div class="metric-label">Sufficiency Decision</div></div>
+      <div class="metric-card"><div class="metric-value" style="color:${verdictColor}">${verdict}</div>
+        <div class="metric-label">Set-Level Verdict</div></div>
+      <div class="metric-card"><div class="metric-value" style="color:${uncertaintyColor}">${uncertainty}</div>
+        <div class="metric-label">Uncertainty Tier</div></div>
+      <div class="metric-card"><div class="metric-value">${coverage}%</div>
+        <div class="metric-label">Facet Coverage</div></div>
+    </div>
+    <div style="margin-top:1rem;padding:0.75rem;background:var(--bg-secondary);
+         border-left:3px solid ${gateColor};border-radius:var(--radius)">
+      <div style="font-family:var(--font-mono);font-size:0.85rem;color:${gateColor};
+           font-weight:600">${gateLabel}</div>
+      ${!gate ? `<div style="margin-top:0.25rem;font-size:0.85rem;color:var(--text-secondary)">
+        ${rec.blocking_reason || ""}</div>` : ""}
+    </div>
+    ${missing.length > 0 ? `
+      <div style="margin-top:0.75rem">
+        <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;
+             text-transform:uppercase;letter-spacing:0.05em">Missing / Uncertain Facets</div>
+        <div style="font-family:var(--font-mono);font-size:0.85rem">
+          ${missing.map(f => `<span class="chip chip-warn">${f}</span>`).join(" ")}
+        </div>
+      </div>
+    ` : ""}
+    ${(report.deterministic_rules || []).length > 0 ? `
+      <div style="margin-top:0.75rem">
+        <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;
+             text-transform:uppercase;letter-spacing:0.05em">Rules Triggered</div>
+        <div style="font-family:var(--font-mono);font-size:0.85rem">
+          ${report.deterministic_rules.map(r => `<span class="chip">${r}</span>`).join(" ")}
+        </div>
+      </div>
+    ` : ""}
+  `;
+}
+
+function renderPopulationIntel(report) {
+  const el = document.getElementById("population-intel-output");
+  if (!el) return;
+  const unc = report.uncertainty_analysis || {};
+  const bias = unc.bias_findings || [];
+  const ev = report.evidence_sufficiency || {};
+  const paths = report.graph_traversal || [];
+
+  const popFreqs = extractPopulationFrequencies(paths, report.population);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem">
+      <div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;
+             letter-spacing:0.05em;margin-bottom:0.5rem">Target Population</div>
+        <div style="font-size:2rem;font-family:var(--font-mono);color:var(--accent-cyan);
+             font-weight:700">${report.population}</div>
+        <div style="font-size:0.85rem;color:var(--text-dim);margin-top:0.25rem">
+          ${popLabel(report.population)}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;
+             letter-spacing:0.05em;margin-bottom:0.5rem">Allele Frequency (on path)</div>
+        ${popFreqs.length === 0
+          ? `<div style="color:var(--text-dim);font-size:0.85rem">no frequency data on traversed paths</div>`
+          : popFreqs.map(pf => `
+            <div class="conf-bar">
+              <span class="conf-label">${pf.allele}</span>
+              <div class="conf-track"><div class="conf-fill high"
+                style="width:${Math.min(100, pf.freq * 100)}%"></div></div>
+              <span class="conf-value">${(pf.freq * 100).toFixed(1)}%</span>
+            </div>
+          `).join("")}
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <div style="font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;
+           letter-spacing:0.05em;margin-bottom:0.5rem">Bias Signals</div>
+      ${bias.length === 0
+        ? `<div style="color:var(--accent-green);font-size:0.85rem">
+             ● none — target population adequately represented</div>`
+        : `<div>${bias.map(b => `
+            <div style="padding:0.5rem;margin:0.25rem 0;border-left:3px solid var(--accent-yellow);
+                 background:var(--bg-secondary);border-radius:var(--radius);font-size:0.85rem">
+              <div style="font-family:var(--font-mono);color:var(--accent-yellow);
+                   font-weight:600">${b.kind}</div>
+              <div style="color:var(--text-secondary);margin-top:0.25rem">${b.reason}</div>
+            </div>`).join("")}</div>`
+      }
+    </div>
+  `;
+}
+
+// Helpers --------------------------------------------------------------
+
+function decisionColorFor(decision) {
+  switch (decision) {
+    case "sufficient": case "pass_with_caveat": return "var(--accent-green)";
+    case "downgrade": case "request_more": case "escalate": return "var(--accent-yellow)";
+    case "abstain": case "block": return "var(--accent-red)";
+    default: return "var(--text-secondary)";
+  }
+}
+
+function verdictColorFor(verdict) {
+  switch (verdict) {
+    case "supported": return "var(--accent-green)";
+    case "uncertain": case "insufficient": return "var(--accent-yellow)";
+    case "refuted": case "conflicting": return "var(--accent-red)";
+    default: return "var(--text-secondary)";
+  }
+}
+
+function uncertaintyColorFor(score) {
+  switch (score) {
+    case "low": return "var(--accent-green)";
+    case "moderate": return "var(--accent-yellow)";
+    case "high": return "var(--accent-red)";
+    case "unsafe": return "var(--accent-red)";
+    default: return "var(--text-secondary)";
+  }
+}
+
+function popLabel(code) {
+  return {
+    AFR: "African", AMR: "Admixed American", EAS: "East Asian",
+    EUR: "European", SAS: "South Asian",
+  }[code] || code;
+}
+
+function extractPopulationFrequencies(paths, population) {
+  // Scan graph paths for HIGHER_FREQUENCY_IN edges targeting the
+  // current population; surface (allele, weight) pairs.
+  const freqs = [];
+  const seen = new Set();
+  const popNode = `population:${population}`;
+  for (const path of paths || []) {
+    for (const edge of path.edges || []) {
+      if (edge.kind === "higher_frequency_in" && edge.target_id === popNode) {
+        const allele = edge.source_id.replace(/^allele:/, "");
+        if (!seen.has(allele)) {
+          seen.add(allele);
+          freqs.push({ allele, freq: edge.weight });
+        }
+      }
+    }
+  }
+  return freqs.sort((a, b) => b.freq - a.freq);
 }
 
 function renderTraceFromEvents(events) {
