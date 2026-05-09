@@ -94,6 +94,13 @@ class CoordinationResult:
     # Total coordinator wall time (all phases, not just LLM).
     duration_ms: float = 0.0
 
+    # Evidence-sufficiency layer checkpoint result (phase 6 of the
+    # sufficiency brief). ``None`` when the coordinator was constructed
+    # without a SufficiencyCheckpoint — the default path. Flagship demos
+    # see ``None`` here and behave exactly as before. When populated,
+    # its .trace and .allows_synthesis fields are the audit trail.
+    sufficiency_checkpoint_result: Any | None = None
+
 
 class ExecutionCoordinator:
     """Executes the routed plan.
@@ -117,11 +124,16 @@ class ExecutionCoordinator:
         boundary: GenerativeBoundary | None = None,
         pipeline_runner: PipelineRunner | None = None,
         conflict_resolver: ConflictResolver | None = None,
+        sufficiency_checkpoint: "SufficiencyCheckpoint | None" = None,
     ) -> None:
         self.ai = ai_client or _default_ai_client()
         self.boundary = boundary or DEFAULT_BOUNDARY
         self._runner = pipeline_runner
         self.resolver = conflict_resolver or ConflictResolver()
+        # Off by default. Flagship demos pass None and keep byte-
+        # identical output. Callers that want the evidence sufficiency
+        # gate construct a SufficiencyCheckpoint and pass it in.
+        self.sufficiency_checkpoint = sufficiency_checkpoint
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -179,6 +191,17 @@ class ExecutionCoordinator:
             result.duration_ms = (time.perf_counter() - wall) * 1000
             return result
 
+        # 3.5. Evidence sufficiency checkpoint (off by default).
+        # Runs only when self.sufficiency_checkpoint was supplied at
+        # construction. When None, this branch is inert — flagship
+        # demo signatures are unchanged. When active, it aggregates
+        # coverage + conflict + uncertainty + bias + set-level verdict
+        # and can block synthesis with a specific escalation reason.
+        if self.sufficiency_checkpoint is not None:
+            if not self._run_sufficiency_checkpoint(ctx, result):
+                result.duration_ms = (time.perf_counter() - wall) * 1000
+                return result
+
         # 4. Comparative analysis (deterministic aggregation)
         if any(d.step.action == "comparative_analysis" for d in routing.decisions):
             self._build_comparison_rows(ctx, result)
@@ -227,6 +250,90 @@ class ExecutionCoordinator:
             conflicts=[c.to_dict() for c in resolution.conflicts],
             notes=resolution.notes,
         )
+
+    # ------------------------------------------------------------------
+    # Step 3.5 — Evidence sufficiency checkpoint (off by default)
+    # ------------------------------------------------------------------
+
+    def _run_sufficiency_checkpoint(
+        self, ctx: SwarmExecutionContext, result: CoordinationResult
+    ) -> bool:
+        """Invoke the configured ``SufficiencyCheckpoint``.
+
+        Returns True if synthesis may proceed; False if the checkpoint
+        blocked it (in which case the escalation path has already been
+        recorded on ``result``).
+
+        The checkpoint is OFF by default. This method runs only when
+        ``self.sufficiency_checkpoint`` is non-None — flagship demos
+        pass None and bypass the whole path.
+
+        Composition discipline:
+          - Reads already-produced pipeline outputs off ``result.runs``;
+            does not run retrieval, does not run LLM, does not mutate
+            the run dicts.
+          - The trace this produces is stored on
+            ``result.sufficiency_checkpoint_result`` for downstream
+            consumers (dashboards, MCP persistence, demos).
+          - A blocking decision goes through the existing
+            ``_escalate`` path so audit trails remain unified.
+        """
+
+        trace = ctx.ensure_trace()
+        t0 = time.perf_counter()
+        # Evaluate on the first run in fan-out order; comparative
+        # scenarios may iterate for each run — keeping the default
+        # single-evaluation keeps the hook cheap and the audit clean.
+        target_run = result.runs[0] if result.runs else {}
+        correlation_id = getattr(ctx, "correlation_id", "") or ""
+        try:
+            checkpoint_result = self.sufficiency_checkpoint.evaluate(
+                target_run,
+                correlation_id=str(correlation_id),
+            )
+        except Exception as exc:  # pragma: no cover — defensive
+            duration = (time.perf_counter() - t0) * 1000
+            trace.record_step(
+                "sufficiency_checkpoint",
+                origin="deterministic",
+                duration_ms=duration,
+                status="error",
+                error=str(exc),
+            )
+            # Fail-safe: checkpoint errors don't block synthesis when
+            # the checkpoint itself crashes — we fall through to the
+            # conflict/verification gates that already ran. Record
+            # the error for the operator.
+            result.sufficiency_checkpoint_result = None
+            return True
+
+        duration = (time.perf_counter() - t0) * 1000
+        result.sufficiency_checkpoint_result = checkpoint_result
+
+        status = "success" if checkpoint_result.allows_synthesis else "error"
+        trace.record_step(
+            "sufficiency_checkpoint",
+            origin="deterministic",
+            duration_ms=duration,
+            status=status,
+            decision=checkpoint_result.report.decision.value,
+            verdict=checkpoint_result.verdict.verdict.value,
+            uncertainty=checkpoint_result.uncertainty.score.value,
+            bias_findings=[b.to_dict() for b in checkpoint_result.bias_findings],
+            allows_synthesis=checkpoint_result.allows_synthesis,
+            blocking_reason=checkpoint_result.blocking_reason,
+        )
+
+        if checkpoint_result.allows_synthesis:
+            return True
+
+        reason = (
+            f"sufficiency checkpoint blocked synthesis: "
+            f"{checkpoint_result.blocking_reason}"
+        )
+        self._escalate(ctx, trace, reason=reason)
+        result.escalation_reason = reason
+        return False
 
     # ------------------------------------------------------------------
     # Step 1 — Pipeline execution

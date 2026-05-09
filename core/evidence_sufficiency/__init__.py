@@ -85,6 +85,10 @@ Positioning
 
 from __future__ import annotations
 
+from core.evidence_sufficiency.checkpoint import (
+    CheckpointResult,
+    SufficiencyCheckpoint,
+)
 from core.evidence_sufficiency.conflict import (
     ConflictDetectionAgent,
     ConflictFinding,
@@ -131,6 +135,9 @@ from core.evidence_sufficiency.verifier import (
 )
 
 __all__ = [
+    # checkpoint (orchestrator façade)
+    "CheckpointResult",
+    "SufficiencyCheckpoint",
     # coverage
     "ClaimCoverageAnalysis",
     "ClaimEvidenceFacet",
