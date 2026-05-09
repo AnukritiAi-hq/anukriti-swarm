@@ -59,6 +59,14 @@ from observability.profiler import (
     TokenUsage,
 )
 from observability.activity import AgentActivity, AgentActivityMonitor
+from observability.graph import (
+    EdgeKind,
+    GraphEdge,
+    GraphNode,
+    NodeKind,
+    SwarmExecutionGraph,
+    WorkflowGraphBuilder,
+)
 
 __all__: list[str] = [
     # Tracer
@@ -73,4 +81,11 @@ __all__: list[str] = [
     # Activity
     "AgentActivityMonitor",
     "AgentActivity",
+    # Graph
+    "SwarmExecutionGraph",
+    "WorkflowGraphBuilder",
+    "GraphNode",
+    "GraphEdge",
+    "NodeKind",
+    "EdgeKind",
 ]
