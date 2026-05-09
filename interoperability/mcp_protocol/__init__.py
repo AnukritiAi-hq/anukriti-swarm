@@ -16,4 +16,10 @@ from the core bus + context primitives.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from interoperability.mcp_protocol.provenance_layer import (
+    ProvenancePropagationLayer,
+)
+
+__all__: list[str] = [
+    "ProvenancePropagationLayer",
+]
