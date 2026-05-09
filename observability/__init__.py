@@ -53,10 +53,20 @@ from observability.tracer import (
     ExecutionEvent,
     ExecutionTracer,
 )
+from observability.profiler import (
+    LatencyDistribution,
+    TimingProfiler,
+    TokenUsage,
+)
 
 __all__: list[str] = [
+    # Tracer
     "ExecutionTracer",
     "ExecutionEvent",
     "EventKind",
     "EventHandler",
+    # Profiler
+    "TimingProfiler",
+    "LatencyDistribution",
+    "TokenUsage",
 ]
