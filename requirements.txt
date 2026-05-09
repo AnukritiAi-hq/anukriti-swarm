@@ -5,6 +5,7 @@
 pydantic==2.7.1
 fastapi==0.111.0
 uvicorn==0.29.0
+websockets==15.0.1
 
 # AI/ML
 langchain==0.2.1
