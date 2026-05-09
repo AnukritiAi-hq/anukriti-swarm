@@ -68,6 +68,7 @@ from evaluation.suites.composite import (
     PopulationAwareSuite,
     WorkflowReliabilitySuite,
 )
+from evaluation.report import SwarmEvaluationReport
 
 __all__: list[str] = [
     "EvaluationCase",
@@ -81,4 +82,5 @@ __all__: list[str] = [
     "HallucinationPreventionSuite",
     "PopulationAwareSuite",
     "WorkflowReliabilitySuite",
+    "SwarmEvaluationReport",
 ]
