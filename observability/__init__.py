@@ -58,6 +58,7 @@ from observability.profiler import (
     TimingProfiler,
     TokenUsage,
 )
+from observability.activity import AgentActivity, AgentActivityMonitor
 
 __all__: list[str] = [
     # Tracer
@@ -69,4 +70,7 @@ __all__: list[str] = [
     "TimingProfiler",
     "LatencyDistribution",
     "TokenUsage",
+    # Activity
+    "AgentActivityMonitor",
+    "AgentActivity",
 ]
