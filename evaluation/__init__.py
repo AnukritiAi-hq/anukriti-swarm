@@ -57,10 +57,16 @@ from evaluation.base import (
     EvaluationSuite,
     SuiteSummary,
 )
+from evaluation.suites.orchestration import (
+    OrchestrationAccuracySuite,
+    cases_from_scenarios,
+)
 
 __all__: list[str] = [
     "EvaluationCase",
     "EvaluationResult",
     "EvaluationSuite",
     "SuiteSummary",
+    "OrchestrationAccuracySuite",
+    "cases_from_scenarios",
 ]
