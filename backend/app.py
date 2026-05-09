@@ -112,9 +112,11 @@ def build_app() -> FastAPI:
     from backend.api import health as _health
     from backend.api import run as _run
     from backend.api import snapshot as _snapshot
+    from backend.ws import run as _ws_run
     application.include_router(_health.router)
     application.include_router(_run.router)
     application.include_router(_snapshot.router)
+    application.include_router(_ws_run.router)
 
     return application
 
