@@ -61,6 +61,7 @@ from evaluation.suites.orchestration import (
     OrchestrationAccuracySuite,
     cases_from_scenarios,
 )
+from evaluation.suites.verification import VerificationAccuracySuite
 
 __all__: list[str] = [
     "EvaluationCase",
@@ -69,4 +70,5 @@ __all__: list[str] = [
     "SuiteSummary",
     "OrchestrationAccuracySuite",
     "cases_from_scenarios",
+    "VerificationAccuracySuite",
 ]
