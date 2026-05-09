@@ -111,6 +111,9 @@ from core.evidence_sufficiency.sufficiency import (
     SufficiencyReport,
 )
 from core.evidence_sufficiency.uncertainty import (
+    BiasFinding,
+    BiasKind,
+    PopulationEvidenceBiasDetector,
     UncertaintyAction,
     UncertaintyAwareReasoningLayer,
     UncertaintyReading,
@@ -151,6 +154,9 @@ __all__ = [
     "EvidenceVerificationResult",
     "SetLevelEvidenceVerifier",
     # uncertainty
+    "BiasFinding",
+    "BiasKind",
+    "PopulationEvidenceBiasDetector",
     "UncertaintyAction",
     "UncertaintyAwareReasoningLayer",
     "UncertaintyReading",

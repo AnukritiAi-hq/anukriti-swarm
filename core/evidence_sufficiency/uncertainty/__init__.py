@@ -28,6 +28,11 @@ identical inputs always produce the same score.
 
 from __future__ import annotations
 
+from core.evidence_sufficiency.uncertainty.bias_detector import (
+    BiasFinding,
+    BiasKind,
+    PopulationEvidenceBiasDetector,
+)
 from core.evidence_sufficiency.uncertainty.engine import (
     UncertaintyAction,
     UncertaintyAwareReasoningLayer,
@@ -37,6 +42,9 @@ from core.evidence_sufficiency.uncertainty.engine import (
 )
 
 __all__ = [
+    "BiasFinding",
+    "BiasKind",
+    "PopulationEvidenceBiasDetector",
     "UncertaintyAction",
     "UncertaintyAwareReasoningLayer",
     "UncertaintyReading",
