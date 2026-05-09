@@ -110,7 +110,9 @@ def build_app() -> FastAPI:
 
     # Routers — registered via add_* modules below.
     from backend.api import health as _health
+    from backend.api import run as _run
     application.include_router(_health.router)
+    application.include_router(_run.router)
 
     return application
 
