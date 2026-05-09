@@ -52,6 +52,7 @@ from integrations.mcp.evidence import MCPEvidenceCache
 from integrations.mcp.memory import MCPExecutionMemory
 from integrations.mcp.provenance import MCPProvenanceStore
 from integrations.mcp.trace_store import MCPTraceStore
+from integrations.mcp.verification_log import MCPVerificationLog
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +73,7 @@ class RunLookup:
     context: dict[str, Any] | None = None
     trace: dict[str, Any] | None = None
     provenance: list[dict[str, Any]] = field(default_factory=list)
+    verification: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def exists(self) -> bool:
@@ -82,6 +84,7 @@ class RunLookup:
                 self.context is not None,
                 self.trace is not None,
                 bool(self.provenance),
+                bool(self.verification),
             ]
         )
 
@@ -93,6 +96,7 @@ class RunLookup:
             "has_context": self.context is not None,
             "has_trace": self.trace is not None,
             "provenance_claims": len(self.provenance),
+            "verification_rows": len(self.verification),
         }
 
 
@@ -160,25 +164,28 @@ class MCPRetrieval:
         self.contexts = MCPContextManager(client=self.client)
         self.provenance = MCPProvenanceStore(client=self.client)
         self.evidence = MCPEvidenceCache(client=self.client)
+        self.verification = MCPVerificationLog(client=self.client)
 
     # ------------------------------------------------------------------
     # Single-run lookup
     # ------------------------------------------------------------------
 
     def lookup(self, correlation_id: str) -> RunLookup:
-        """Fetch memory + context + trace + provenance for one run."""
+        """Fetch memory + context + trace + provenance + verification for one run."""
         if not correlation_id:
             raise ValueError("lookup requires correlation_id")
         mem = self.memory.get_run(correlation_id)
         ctx = self.contexts.load(correlation_id)
         trc = self.traces.get_trace(correlation_id)
         prov = self.provenance.for_run(correlation_id)
+        vlog = self.verification.for_run(correlation_id)
         return RunLookup(
             correlation_id=correlation_id,
             memory=mem.data if mem.success else None,
             context=ctx.data if ctx.success else None,
             trace=trc.data if trc.success else None,
             provenance=list(prov.data or []) if prov.success else [],
+            verification=list(vlog.data or []) if vlog.success else [],
         )
 
     # ------------------------------------------------------------------
@@ -245,6 +252,32 @@ class MCPRetrieval:
         return list(res.data or []) if res.success else []
 
     # ------------------------------------------------------------------
+    # Verification history
+    # ------------------------------------------------------------------
+
+    def verification_history_for_check(
+        self,
+        check_name: str,
+        *,
+        gene: str = "",
+        population: str = "",
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """All warn/fail rows for a named verification check.
+
+        Thin wrapper around ``MCPVerificationLog.failures`` filtered by
+        ``check_name``. Useful for questions like "which runs failed
+        evidence_grounding?" or "when did sparse_population warn on
+        SAS?".
+        """
+        if not check_name:
+            raise ValueError("verification_history_for_check requires check_name")
+        res = self.verification.failures(
+            check_name=check_name, gene=gene, population=population, limit=limit
+        )
+        return list(res.data or []) if res.success else []
+
+    # ------------------------------------------------------------------
     # Replay
     # ------------------------------------------------------------------
 
@@ -303,6 +336,7 @@ class MCPRetrieval:
             "contexts": b.count("contexts"),
             "provenance": b.count("provenance"),
             "evidence": b.count("evidence"),
+            "verification_logs": b.count("verification_logs"),
         }
 
 

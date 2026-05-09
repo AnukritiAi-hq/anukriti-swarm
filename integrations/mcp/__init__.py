@@ -99,6 +99,10 @@ from integrations.mcp.provenance import (
     ProvenanceRecord,
 )
 from integrations.mcp.evidence import EVIDENCE_COLLECTION, MCPEvidenceCache
+from integrations.mcp.verification_log import (
+    VERIFICATION_LOG_COLLECTION,
+    MCPVerificationLog,
+)
 
 # --- Aggregator + persistence hook ---
 from integrations.mcp.retrieval import MCPRetrieval, ReplayBundle, RunLookup
@@ -144,6 +148,7 @@ __all__ = [
     "MCPContextManager",
     "MCPProvenanceStore",
     "MCPEvidenceCache",
+    "MCPVerificationLog",
     # Service records
     "ProvenanceRecord",
     # Aggregator + persistence hook

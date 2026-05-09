@@ -61,6 +61,7 @@ from integrations.mcp.evidence import MCPEvidenceCache
 from integrations.mcp.memory import MCPExecutionMemory
 from integrations.mcp.provenance import MCPProvenanceStore, ProvenanceRecord
 from integrations.mcp.trace_store import MCPTraceStore
+from integrations.mcp.verification_log import MCPVerificationLog
 
 if TYPE_CHECKING:  # pragma: no cover — type-checker only
     from agents.orchestrator.gemini_orchestrator import OrchestrationResult
@@ -87,6 +88,7 @@ class PersistenceReport:
     context_stored: bool = False
     claims_recorded: int = 0
     evidence_indexed: int = 0
+    verification_rows: int = 0
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -102,6 +104,7 @@ class PersistenceReport:
             "context_stored": self.context_stored,
             "claims_recorded": self.claims_recorded,
             "evidence_indexed": self.evidence_indexed,
+            "verification_rows": self.verification_rows,
             "ok": self.ok,
             "errors": list(self.errors),
         }
@@ -129,6 +132,7 @@ class MCPPersistenceHook:
         self.contexts = MCPContextManager(client=self.client)
         self.provenance = MCPProvenanceStore(client=self.client)
         self.evidence = MCPEvidenceCache(client=self.client)
+        self.verification = MCPVerificationLog(client=self.client)
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -145,6 +149,7 @@ class MCPPersistenceHook:
         self._store_context(result, report)
         self._record_provenance(result, report)
         self._index_evidence(result, report)
+        self._log_verification(result, report)
 
         return report
 
@@ -474,6 +479,56 @@ class MCPPersistenceHook:
                         report.evidence_indexed += 1
                 except Exception as exc:
                     report.errors.append(f"evidence.index({sid}): {exc}")
+
+    # ------------------------------------------------------------------
+    # Step: per-check verification breakdown → verification_logs
+    # ------------------------------------------------------------------
+
+    def _log_verification(
+        self, result: "OrchestrationResult", report: PersistenceReport
+    ) -> None:
+        """Explode each run's verification report into per-check rows.
+
+        The memory + provenance records already carry the aggregate
+        verdict + confidence; this step preserves the *per-check*
+        breakdown (6 checks produced by ``verification/engine.py``) so
+        callers can query "every run where ``sparse_population`` warned"
+        without scanning full memory docs.
+
+        Best-effort by design: a malformed verification dict yields a
+        warning in ``report.errors`` but never blocks the run from
+        landing in the other stores.
+        """
+        ctx = result.context
+        cid = ctx.correlation_id
+
+        for run in result.coordination.runs:
+            verif = run.get("verification")
+            if not isinstance(verif, dict) or not verif:
+                # No verification stage ran for this row — skip silently.
+                continue
+            try:
+                pgx = run.get("pharmacogene_result") or {}
+                pop = run.get("population_result") or {}
+                res = self.verification.record_run(
+                    correlation_id=cid,
+                    verification=verif,
+                    gene=pgx.get("gene") or run.get("gene") or ctx.gene or "",
+                    drug=run.get("drug") or ctx.drug or "",
+                    population=pop.get("population")
+                    or run.get("population")
+                    or ctx.population
+                    or "",
+                    run_label=run.get("_row_label", "single"),
+                )
+                if res.success:
+                    report.verification_rows += int(
+                        (res.data or {}).get("rows_inserted", 0)
+                    )
+                else:
+                    report.errors.append(f"verification.record: {res.error}")
+            except Exception as exc:
+                report.errors.append(f"verification.record: {exc}")
 
 
 __all__ = ["MCPPersistenceHook", "PersistenceReport"]
