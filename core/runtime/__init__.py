@@ -47,6 +47,19 @@ Populated through session #7:
 from __future__ import annotations
 
 from core.runtime.context import UnifiedExecutionContext
+from core.runtime.events import (
+    EventStream,
+    InMemoryEventStream,
+    RuntimeEvent,
+    RuntimeEventKind,
+)
 from core.runtime.report import UnifiedExecutionReport
 
-__all__ = ["UnifiedExecutionContext", "UnifiedExecutionReport"]
+__all__ = [
+    "UnifiedExecutionContext",
+    "UnifiedExecutionReport",
+    "EventStream",
+    "InMemoryEventStream",
+    "RuntimeEvent",
+    "RuntimeEventKind",
+]
