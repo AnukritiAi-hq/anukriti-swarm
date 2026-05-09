@@ -16,8 +16,9 @@ itself) and composes four existing deterministic stacks:
     core.verification.safety     → do the rules still fire
     integrations.mcp.evidence    → is the MCP cache populated
 
-On the output side it emits a single ``SufficiencyDecision`` that
-the orchestrator honours *before* any generative narrative runs.
+On the output side it emits a single ``SufficiencyReport`` whose
+``decision`` the orchestrator honours *before* any generative
+narrative runs.
 
 Scope firewall (read before extending)
 --------------------------------------
@@ -37,22 +38,45 @@ This layer is **not**:
       *counts* and *facet coverage*, not from a model's opinion
       about the evidence
 
-Sub-packages
-------------
-    sufficiency/   ContextSufficiencyAgent, SufficiencyDecisionEngine
-    coverage/      EvidenceCoverageAnalyzer, ProvenanceCoverageTracker,
-                   ClaimCoverageAnalysis
-    conflict/      ConflictDetectionAgent
-    uncertainty/   UncertaintyScoringEngine, UncertaintyScore,
-                   PopulationEvidenceBiasDetector
-    verifier/      SetLevelEvidenceVerifier, EvidenceVerificationResult
-    trace.py       EvidenceSufficiencyTrace (frozen audit record)
+Public surface (phase 1, commit 5)
+----------------------------------
+
+Coverage (``core/evidence_sufficiency/coverage/``):
+    ClaimCoverageAnalysis       frozen 6-facet record
+    ClaimEvidenceFacet          closed 6-value enum
+    FacetCoverageState          closed 3-value enum
+    ALL_FACETS                  canonical iteration order
+    EvidenceCoverageAnalyzer    deterministic 6-facet producer
+    ProvenanceCoverageTracker   deterministic 4-dim auditor
+    ProvenanceDimension         closed 4-value enum
+    DimensionState              closed 2-value enum
+    ALL_DIMENSIONS              canonical iteration order
+    ProvenanceCoverageReport    frozen 4-dim report
+
+Conflict (``core/evidence_sufficiency/conflict/``):
+    ConflictDetectionAgent      deterministic 3-class detector
+    ConflictKind                closed 3-value enum
+    ConflictSeverity            closed 2-value enum (HARD/SOFT)
+    RecommendationAction        closed 5-value enum
+    ConflictFinding             frozen audit record
+
+Sufficiency (``core/evidence_sufficiency/sufficiency/``):
+    ContextSufficiencyAgent     orchestration-facing façade
+    SufficiencyDecisionEngine   pure 12-rule policy engine
+    SufficiencyDecision         closed 7-value enum
+    SufficiencyReport           frozen per-run decision record
+
+Downstream subpackages (phases 4-5, not yet populated):
+    verifier/                   SetLevelEvidenceVerifier
+    uncertainty/                UncertaintyScoringEngine +
+                                PopulationEvidenceBiasDetector
 
 Integration surface
 -------------------
 Off by default. The orchestrator reads a ``sufficiency_enabled`` flag
-(phase 6) before invoking the checkpoint. Existing demos retain their
-exact runtime signatures until they opt in.
+(phase 6) before invoking ``ContextSufficiencyAgent.evaluate``.
+Existing flagship demos retain their exact runtime signatures until
+they opt in.
 
 Positioning
 -----------
@@ -61,4 +85,53 @@ Positioning
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from core.evidence_sufficiency.conflict import (
+    ConflictDetectionAgent,
+    ConflictFinding,
+    ConflictKind,
+    ConflictSeverity,
+    RecommendationAction,
+)
+from core.evidence_sufficiency.coverage import (
+    ALL_DIMENSIONS,
+    ALL_FACETS,
+    ClaimCoverageAnalysis,
+    ClaimEvidenceFacet,
+    DimensionState,
+    EvidenceCoverageAnalyzer,
+    FacetCoverageState,
+    ProvenanceCoverageReport,
+    ProvenanceCoverageTracker,
+    ProvenanceDimension,
+)
+from core.evidence_sufficiency.sufficiency import (
+    ContextSufficiencyAgent,
+    SufficiencyDecision,
+    SufficiencyDecisionEngine,
+    SufficiencyReport,
+)
+
+__all__ = [
+    # coverage
+    "ClaimCoverageAnalysis",
+    "ClaimEvidenceFacet",
+    "FacetCoverageState",
+    "ALL_FACETS",
+    "EvidenceCoverageAnalyzer",
+    "ProvenanceCoverageTracker",
+    "ProvenanceCoverageReport",
+    "ProvenanceDimension",
+    "DimensionState",
+    "ALL_DIMENSIONS",
+    # conflict
+    "ConflictDetectionAgent",
+    "ConflictFinding",
+    "ConflictKind",
+    "ConflictSeverity",
+    "RecommendationAction",
+    # sufficiency
+    "ContextSufficiencyAgent",
+    "SufficiencyDecision",
+    "SufficiencyDecisionEngine",
+    "SufficiencyReport",
+]
