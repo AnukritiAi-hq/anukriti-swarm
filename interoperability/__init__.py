@@ -68,5 +68,17 @@ Public surface (lands progressively):
 
 from __future__ import annotations
 
+from interoperability.shared_context import (
+    AgentContextEnvelope,
+    BiomedicalContextType,
+    ConfidenceLevel,
+    VerificationState,
+)
+
 # Public API — filled in progressively across the 10 commits.
-__all__: list[str] = []
+__all__: list[str] = [
+    "AgentContextEnvelope",
+    "BiomedicalContextType",
+    "VerificationState",
+    "ConfidenceLevel",
+]

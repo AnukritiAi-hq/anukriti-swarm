@@ -17,4 +17,16 @@ to collaborate:
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from interoperability.shared_context.envelope import (
+    AgentContextEnvelope,
+    BiomedicalContextType,
+    ConfidenceLevel,
+    VerificationState,
+)
+
+__all__: list[str] = [
+    "AgentContextEnvelope",
+    "BiomedicalContextType",
+    "VerificationState",
+    "ConfidenceLevel",
+]
