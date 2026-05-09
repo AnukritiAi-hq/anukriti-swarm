@@ -68,6 +68,7 @@ Public surface (lands progressively):
 
 from __future__ import annotations
 
+from interoperability.agent_bus import AgentHandler, AgentMessageBus, BusObserver
 from interoperability.shared_context import (
     AgentContextEnvelope,
     BiomedicalContextType,
@@ -81,4 +82,7 @@ __all__: list[str] = [
     "BiomedicalContextType",
     "VerificationState",
     "ConfidenceLevel",
+    "AgentMessageBus",
+    "AgentHandler",
+    "BusObserver",
 ]
