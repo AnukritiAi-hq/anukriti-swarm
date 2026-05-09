@@ -58,9 +58,14 @@ CYP2C19_SCENARIOS: list[BenchmarkScenario] = [
     ),
     BenchmarkScenario(
         "cyp2c19_clop_eur_rm", "CYP2C19", "clopidogrel", "EUR", "*1", "*17",
-        "Normal Metabolizer", "standard", "pass",
+        "Rapid Metabolizer", "standard", "pass",
         0.22, "common",
-        "European with *17 gain-of-function — clopidogrel effective",
+        # CPIC 2022 clopidogrel guideline (Table 2, NBK84114):
+        # *1/*17 -> Rapid Metabolizer. Standard 75 mg/day dose is still
+        # recommended for RM and UM; no increased bleeding risk observed.
+        # See rules.phenotype_rules for the activity-score derivation
+        # (*1=1.0 + *17=1.5 = 2.5 = RM).
+        "European *1/*17 Rapid Metabolizer (CPIC 2022) — clopidogrel at standard dose",
     ),
 ]
 
@@ -74,10 +79,23 @@ CYP2D6_SCENARIOS: list[BenchmarkScenario] = [
         "European PM — *4 is most common null allele here",
     ),
     BenchmarkScenario(
-        "cyp2d6_codeine_afr_im", "CYP2D6", "codeine", "AFR", "*1", "*17",
-        "Intermediate Metabolizer", "moderate_risk", "pass",
+        # Scenario id kept as ..._afr_nm (was ..._afr_im) to reflect the
+        # corrected CPIC-compliant phenotype assignment. The AFR population
+        # context is preserved because *17 is still AFR-specific (~20%) —
+        # the population-awareness claim stands; only the phenotype label
+        # was wrong.
+        "cyp2d6_codeine_afr_nm", "CYP2D6", "codeine", "AFR", "*1", "*17",
+        "Normal Metabolizer", "standard", "pass",
         0.20, "common",
-        "African IM — *17 is AFR-specific decreased-function allele",
+        # CPIC 2019 CYP2D6 genotype-to-phenotype standardization
+        # (Caudle et al. 2020, PMID:31647186) + CYP2D6 allele
+        # functionality table: *17 activity score = 0.5. Diplotype
+        # score *1/*17 = 1.5 falls in NM band (>1.25 and <=2.25).
+        # Pre-2019 conventions placed 1.5 in IM; superseded.
+        # See rules.phenotype_rules PHENOTYPE_RANGES for the cutoffs.
+        "African *1/*17 Normal Metabolizer (CPIC 2019 standardization) — "
+        "*17 is AFR-specific (~20%); score 1.5 maps to NM, not IM as in "
+        "pre-2019 conventions",
     ),
     BenchmarkScenario(
         "cyp2d6_codeine_sas_im", "CYP2D6", "codeine", "SAS", "*1", "*4",
