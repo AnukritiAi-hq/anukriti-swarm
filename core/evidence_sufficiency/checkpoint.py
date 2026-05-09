@@ -110,6 +110,16 @@ class CheckpointResult:
             "uncertainty_action": self.uncertainty.action.value,
             "bias_findings": [b.to_dict() for b in self.bias_findings],
             "trace": self.trace.to_dict(),
+            # Coverage signals flattened for frontend convenience — the
+            # full ClaimCoverageAnalysis lives in the checkpoint's
+            # SufficiencyReport, but dashboards want the top-level view.
+            "coverage_ratio": self.report.coverage.coverage_ratio,
+            "missing_facets": [
+                f.value for f in self.report.coverage.missing_facets
+            ],
+            "uncertain_facets": [
+                f.value for f in self.report.coverage.uncertain_facets
+            ],
         }
 
 

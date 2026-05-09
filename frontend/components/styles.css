@@ -101,6 +101,134 @@ body {
 }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
 
+/* Secondary action button (phase 6) — flagship-trio runner */
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--font-mono);
+}
+.btn-secondary:hover { background: var(--accent-cyan); color: var(--bg-primary); }
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Flagship Trio — 3-column comparison grid (phase 6) */
+.trio-status {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  min-height: 1.5rem;
+}
+.trio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .trio-grid { grid-template-columns: 1fr; }
+}
+.trio-column {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.trio-column.pending {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.trio-column.success {
+  border-left: 3px solid var(--accent-green);
+}
+.trio-column.refused {
+  border-left: 3px solid var(--accent-red);
+}
+.trio-title {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.trio-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.trio-metric-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.trio-metric {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0.4rem 0.25rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+}
+.trio-metric-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.trio-metric-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+.trio-coverage-bar {
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.trio-coverage-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.trio-outcome {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding: 0.5rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  flex: 1;
+}
+.trio-outcome.success { border-left: 2px solid var(--accent-green); }
+.trio-outcome.refused { border-left: 2px solid var(--accent-red); }
+.trio-stats {
+  display: flex;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+.trio-summary {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.05), rgba(139, 92, 246, 0.05));
+  border-radius: var(--radius);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.trio-summary strong { color: var(--accent-cyan); }
+
 /* Trace */
 .trace-container { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.8; max-height: 400px; overflow-y: auto; }
 .trace-line { padding: 0.25rem 0; border-left: 2px solid var(--border); padding-left: 1rem; margin-left: 0.5rem; }

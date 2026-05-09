@@ -1079,6 +1079,204 @@ function renderGovernance(report) {
 }
 
 // ---------------------------------------------------------------------------
+// Flagship Trio runner — phase 6 commit 16
+// ---------------------------------------------------------------------------
+//
+// Runs the three canonical scenarios sequentially via POST /api/run and
+// renders them in a 3-column side-by-side comparison. Uses the sync path
+// deliberately: we want all three reports before rendering the comparison,
+// not incremental streaming. The live-streaming story is in runAnalysis().
+
+const FLAGSHIP_TRIO = [
+  {
+    id: "cyp2c19_clopidogrel_sas",
+    title: "Clopidogrel + CYP2C19 + SAS",
+    subtitle: "36% SAS carry *2 (loss-of-function)",
+    drug: "clopidogrel", gene: "CYP2C19",
+    population: "SAS", genotype: "*2/*2",
+  },
+  {
+    id: "hlab_cbz_eas",
+    title: "Carbamazepine + HLA-B*15:02 + EAS",
+    subtitle: "8% EAS prevalence; contraindicated",
+    drug: "carbamazepine", gene: "HLA-B",
+    population: "EAS", genotype: "*15:02/positive",
+  },
+  {
+    id: "cyp2d6_codeine_afr",
+    title: "Codeine + CYP2D6 + AFR",
+    subtitle: "CYP2D6*4 PM; AFR-specific evidence absent",
+    drug: "codeine", gene: "CYP2D6",
+    population: "AFR", genotype: "*4/*4",
+  },
+];
+
+async function runFlagshipTrio() {
+  const section = document.getElementById("flagship-trio-section");
+  const grid = document.getElementById("trio-grid");
+  const statusEl = document.getElementById("trio-status");
+  const summaryEl = document.getElementById("trio-summary");
+  if (!section || !grid) return;
+
+  // Reveal + reset.
+  section.classList.remove("hidden");
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+  grid.innerHTML = FLAGSHIP_TRIO
+    .map(s => trioColumnPending(s)).join("");
+  if (summaryEl) summaryEl.innerHTML = "";
+
+  // Disable the buttons while the trio runs so the user doesn't kick off
+  // overlapping sessions.
+  const buttons = document.querySelectorAll("button.btn-primary, button.btn-secondary");
+  buttons.forEach(b => { b.disabled = true; });
+
+  if (!STATE.backend_live) {
+    if (statusEl) statusEl.innerHTML =
+      `<span style="color:var(--accent-yellow)">● offline — flagship trio requires a live backend</span>`;
+    buttons.forEach(b => { b.disabled = false; });
+    return;
+  }
+
+  const reports = [];
+  try {
+    for (let i = 0; i < FLAGSHIP_TRIO.length; i++) {
+      const scenario = FLAGSHIP_TRIO[i];
+      if (statusEl) statusEl.innerHTML =
+        `<span style="color:var(--accent-cyan)">● running ${i + 1}/${FLAGSHIP_TRIO.length}:
+         ${scenario.title}</span>`;
+      const r = await fetch(`${BACKEND}/api/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drug: scenario.drug, gene: scenario.gene,
+          population: scenario.population, genotype: scenario.genotype,
+          correlation_id: `trio-${scenario.id}-${Date.now()}`,
+        }),
+      });
+      if (!r.ok) throw new Error(`${scenario.id}: ${r.status} ${await r.text()}`);
+      const body = await r.json();
+      reports.push({ scenario, report: body.report, events: body.events });
+      renderTrioColumn(i, scenario, body.report);
+    }
+
+    if (statusEl) statusEl.innerHTML =
+      `<span style="color:var(--accent-green)">● complete · 3/${FLAGSHIP_TRIO.length} scenarios</span>`;
+
+    // Summary line: the canonical population-difference story.
+    if (summaryEl) {
+      const decisions = reports.map(r =>
+        r.report.evidence_sufficiency.sufficiency_decision);
+      const gates = reports.map(r =>
+        r.report.final_recommendation.allows_synthesis);
+      const yes = gates.filter(Boolean).length;
+      const no = gates.length - yes;
+      summaryEl.innerHTML = `
+        <strong>Same platform · same drug class · three populations · three outcomes.</strong><br>
+        ${yes}/${reports.length} synthesised · ${no}/${reports.length} abstained.<br>
+        Decisions: ${decisions.join(" · ")}.
+      `;
+    }
+  } catch (err) {
+    console.error("flagship trio failed:", err);
+    if (statusEl) statusEl.innerHTML =
+      `<span style="color:var(--accent-red)">● failed: ${String(err)}</span>`;
+  } finally {
+    buttons.forEach(b => { b.disabled = false; });
+  }
+}
+
+function trioColumnPending(scenario) {
+  return `
+    <div class="trio-column pending" id="trio-col-${scenario.id}">
+      <div class="trio-title">${scenario.title}</div>
+      <div class="trio-subtitle">${scenario.subtitle}</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;
+           color:var(--text-dim);font-family:var(--font-mono);font-size:0.8rem">
+        awaiting run…
+      </div>
+    </div>
+  `;
+}
+
+function renderTrioColumn(index, scenario, report) {
+  const col = document.getElementById(`trio-col-${scenario.id}`);
+  if (!col) return;
+
+  const ev = report.evidence_sufficiency || {};
+  const unc = report.uncertainty_analysis || {};
+  const rec = report.final_recommendation || {};
+  const allows = !!rec.allows_synthesis;
+
+  const decision = ev.sufficiency_decision || "?";
+  const verdict = ev.verdict || "?";
+  const uncertainty = unc.uncertainty_score || "?";
+  const coverage = Math.round((ev.coverage_ratio || 0) * 100);
+
+  const decisionColor = decisionColorFor(decision);
+  const verdictColor = verdictColorFor(verdict);
+  const uncertaintyColor = uncertaintyColorFor(uncertainty);
+  const coverageFillColor =
+    coverage >= 90 ? "var(--accent-green)" :
+    coverage >= 70 ? "var(--accent-yellow)" :
+    "var(--accent-red)";
+
+  const citations = (((ev.trace || {}).retrieved_evidence) || []).slice(0, 3);
+  const pathCount = (report.graph_traversal || []).length;
+  const ruleCount = (report.deterministic_rules || []).length;
+  const agentCount = (report.activated_agents || []).length;
+
+  const outcomeClass = allows ? "success" : "refused";
+  const outcomeContent = allows
+    ? `<strong style="color:var(--accent-green)">✓ ${rec.text || "synthesis"}</strong>`
+    : `<strong style="color:var(--accent-red)">✗ ${parseBlockingReason(rec.blocking_reason).rationale || "refused"}</strong>
+       <div style="color:var(--text-dim);font-size:0.75rem;margin-top:0.25rem;
+            font-family:var(--font-mono)">
+         rule=${parseBlockingReason(rec.blocking_reason).rule_id || "?"}
+       </div>`;
+
+  col.className = `trio-column ${outcomeClass}`;
+  col.innerHTML = `
+    <div class="trio-title">${scenario.title}</div>
+    <div class="trio-subtitle">${scenario.subtitle}</div>
+
+    <div class="trio-metric-row">
+      <div class="trio-metric">
+        <div class="trio-metric-label">Decision</div>
+        <div class="trio-metric-value" style="color:${decisionColor}">${decision}</div>
+      </div>
+      <div class="trio-metric">
+        <div class="trio-metric-label">Verdict</div>
+        <div class="trio-metric-value" style="color:${verdictColor}">${verdict}</div>
+      </div>
+      <div class="trio-metric">
+        <div class="trio-metric-label">Uncertainty</div>
+        <div class="trio-metric-value" style="color:${uncertaintyColor}">${uncertainty}</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:0.7rem;
+           color:var(--text-dim);margin-bottom:0.25rem">
+        <span>Coverage</span><span>${coverage}%</span>
+      </div>
+      <div class="trio-coverage-bar">
+        <div class="trio-coverage-fill"
+             style="width:${coverage}%;background:${coverageFillColor}"></div>
+      </div>
+    </div>
+
+    <div class="trio-outcome ${outcomeClass}">${outcomeContent}</div>
+
+    <div class="trio-stats">
+      <span>${agentCount} agents</span>
+      <span>${pathCount} KG paths</span>
+      <span>${ruleCount} rules</span>
+      <span>${citations.length} cites</span>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // Safe Abstention UI mode — phase 5 commit 15
 // ---------------------------------------------------------------------------
 
@@ -1236,5 +1434,6 @@ document.addEventListener("DOMContentLoaded", checkBackend);
 
 // Expose entry points for the existing index.html onclick handlers.
 window.runAnalysis = runAnalysis;
+window.runFlagshipTrio = runFlagshipTrio;
 window.showTab = showTab;
 window.applyScenario = applyScenario;
