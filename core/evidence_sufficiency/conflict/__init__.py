@@ -18,11 +18,38 @@ pharmacogenomic conflict classes:
                                 frequencies in the same ancestry
                                 group (beyond declared tolerance)
 
-If a conflict is detected, downstream synthesis is blocked and the
-escalation workflow is invoked — same pattern as
-``EscalationWorkflow`` in ``core.verification``.
+If a conflict is detected, downstream synthesis is blocked via the
+``CONFLICT_FREE`` facet on ``ClaimCoverageAnalysis`` being downgraded
+to MISSING (hard) or UNCERTAIN (soft). The escalation workflow then
+picks up the facet state — same pattern as the existing
+``core.verification.EscalationWorkflow``.
+
+Public surface (all added in commit 4):
+
+    ConflictKind              closed enum (3 classes)
+    ConflictSeverity          closed enum (HARD / SOFT)
+    RecommendationAction      closed enum (use / avoid /
+                              consider_alt / contraindicated /
+                              unknown) used by the recommendation
+                              clash detector
+    ConflictFinding           frozen audit record
+    ConflictDetectionAgent    stateless detector
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from core.evidence_sufficiency.conflict.agent import (
+    ConflictDetectionAgent,
+    ConflictFinding,
+    ConflictKind,
+    ConflictSeverity,
+    RecommendationAction,
+)
+
+__all__ = [
+    "ConflictDetectionAgent",
+    "ConflictFinding",
+    "ConflictKind",
+    "ConflictSeverity",
+    "RecommendationAction",
+]
