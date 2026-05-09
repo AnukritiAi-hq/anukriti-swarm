@@ -51,6 +51,7 @@ from core.verification.trace import (
     VerificationTrace,
     make_trace,
 )
+from core.verification.claim_validator import BiomedicalClaimValidator
 
 __all__ = [
     "VerificationScore",
@@ -61,4 +62,5 @@ __all__ = [
     "EscalationEvent",
     "TraceState",
     "make_trace",
+    "BiomedicalClaimValidator",
 ]
