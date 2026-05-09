@@ -28,8 +28,12 @@ pytest==8.2.0
 ruff==0.4.4
 mypy==1.10.0
 
-# Deterministic pharmacogenomics core (Phase 1 extraction).
-# Layer 2 of anukriti-pgx-core — CPIC-pinned phenotype engine.
+# Deterministic pharmacogenomics core.
+# 13-gene CPIC-pinned phenotype engine + VCF callers + provenance manifest.
 # rules/phenotype_rules.py is a thin re-export over this package.
-# Editable sibling path during local dev; pin a release when published.
--e ../anukriti-pgx-core
+# Published to PyPI from https://github.com/AnukritiAi-hq/anukriti-pgx-core
+#
+# Pin the patch version exactly — the library is the biomedical truth
+# layer and new versions may contain CPIC table updates that require
+# regression review in Swarm before adoption. Bump this pin deliberately.
+anukriti-pgx-core==0.2.1
