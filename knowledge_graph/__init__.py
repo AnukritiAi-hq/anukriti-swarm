@@ -23,16 +23,43 @@ Population is a *first-class* node kind, not metadata. Edges like
 ``higher_frequency_in`` and ``supported_by`` carry the ancestry
 context that drives retrieval priorities and evidence weighting.
 
-Sub-modules
------------
-    schema.py     closed-enum NodeKind + EdgeKind + provenance stamp
-    graph.py      PharmacogenomicKnowledgeGraph (in-memory)
-    builder.py    GraphContextBuilder + PopulationGraphIndexer
-    reasoner.py   MultiHopReasoner + PathEvidenceRetriever
+Public surface (populated through phase 3):
+
+    schema:
+      NodeKind / EdgeKind closed enums (commit 9)
+      ProvenanceStamp / Node / Edge frozen records (commit 9)
+    seed:
+      SEED_NODES / SEED_EDGES derived from in-tree CPIC + rules
+      data (commit 9)
+    graph (commit 10):
+      PharmacogenomicKnowledgeGraph (in-memory)
+    builder (commit 10):
+      GraphContextBuilder + PopulationGraphIndexer
+    reasoner (commit 11):
+      MultiHopReasoner + PathEvidenceRetriever
 
 All modules are deterministic; no LLM calls in this package.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from knowledge_graph.schema import (
+    Edge,
+    EdgeKind,
+    Node,
+    NodeKind,
+    ProvenanceStamp,
+)
+from knowledge_graph.seed import SEED_EDGES, SEED_NODES
+
+__all__ = [
+    # schema
+    "Edge",
+    "EdgeKind",
+    "Node",
+    "NodeKind",
+    "ProvenanceStamp",
+    # seed
+    "SEED_EDGES",
+    "SEED_NODES",
+]
