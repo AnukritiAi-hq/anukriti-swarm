@@ -36,6 +36,7 @@ import os
 from agents.orchestrator.gemini_orchestrator import GeminiOrchestrator
 from integrations.mcp import (
     MCPClient,
+    MCPMemoryAdvisor,
     MCPPersistenceHook,
     MCPRetrieval,
 )
@@ -98,6 +99,16 @@ SCENARIOS = [
         "allele1": "*1",
         "allele2": "*1",
     },
+    {
+        # Repeat scenario 1 so the memory advisor has a prior run to find.
+        # Demonstrates read-side memory-aware orchestration.
+        "title": "CYP2C19 *2/*2 + clopidogrel in SAS (repeat — exercises advisor)",
+        "gene": "CYP2C19",
+        "drug": "clopidogrel",
+        "population": "SAS",
+        "allele1": "*2",
+        "allele2": "*2",
+    },
 ]
 
 
@@ -110,13 +121,17 @@ def run_demo() -> None:
     # ----- Wiring ---------------------------------------------------
     # Let the loader pick: Mongo when MONGODB_URI set, in-memory otherwise.
     client = MCPClient()
-    orchestrator = GeminiOrchestrator()
+    advisor = MCPMemoryAdvisor(client=client)
+    # The orchestrator consults the advisor before planning so each
+    # subsequent run sees the prior runs the hook persisted.
+    orchestrator = GeminiOrchestrator(memory_advisor=advisor)
     hook = MCPPersistenceHook(client=client)
     retrieval = MCPRetrieval(client=client)
 
     print(f"  {D}  Backend mode:     {client.mode}{R}")
     print(f"  {D}  Registered tools: {len(client.list_tools())}{R}")
-    print(f"  {D}  Services wired:   5  (memory, traces, contexts, provenance, evidence){R}")
+    print(f"  {D}  Services wired:   6  (memory, traces, contexts, provenance, evidence, verification){R}")
+    print(f"  {D}  Memory advisor:   opt-in — enabled for this demo{R}")
 
     # -----------------------------------------------------------------
     # 1. MCP-enabled orchestration
@@ -141,10 +156,15 @@ def run_demo() -> None:
             f"      correlation={cid}  phase={result.context.phase.value} "
             f"verify={result.verification_state.value}"
         )
+        prior = result.prior_runs or {}
+        print(
+            f"      {D}memory advisor: {prior.get('hint', '—')}{R}"
+        )
         print(
             f"      persisted: mem={report.memory_stored} trace={report.trace_stored} "
             f"ctx={report.context_stored} "
-            f"claims={report.claims_recorded} evidence={report.evidence_indexed}"
+            f"claims={report.claims_recorded} evidence={report.evidence_indexed} "
+            f"verif_rows={report.verification_rows}"
         )
         if report.errors:
             print(f"      {YELLOW}warnings: {len(report.errors)}{R}")
@@ -247,9 +267,72 @@ def run_demo() -> None:
         print(f"\n  {YELLOW}  (restore_context returned None — no snapshot found){R}")
 
     # -----------------------------------------------------------------
-    # 5. MCP observability — tool-level call metrics
+    # 5. Verification logs — per-check audit trail
     # -----------------------------------------------------------------
-    _rule("5. MCP observability snapshot", CYAN)
+    _rule("5. Verification logs — per-check audit trail", RED)
+    print(
+        f"  {D}  Query: 'show me the 6-check breakdown for the focus run'{R}\n"
+    )
+
+    vrows = retrieval.verification.for_run(fcid).data or []
+    print(f"  {D}  {len(vrows)} check row(s) logged for this run:{R}")
+    for row in vrows:
+        verdict = row.get("verdict", "")
+        color = (
+            GREEN if verdict == "pass"
+            else YELLOW if verdict == "warn"
+            else RED if verdict == "fail"
+            else D
+        )
+        print(
+            f"    {color}[{verdict:<4}]{R} {B}{row.get('check_name'):<26}{R} "
+            f"{D}{row.get('reason', '')[:50]}{R}"
+        )
+
+    stats = retrieval.verification.stats().data or {}
+    by_check = stats.get("by_check", {})
+    if by_check:
+        print(f"\n  {D}  Cross-run rollup — pass/warn/fail per check:{R}")
+        for name, check_counts in by_check.items():
+            line = "  ".join(f"{k}={v}" for k, v in check_counts.items() if v)
+            print(f"    {name:<26} {line}")
+
+    # -----------------------------------------------------------------
+    # 6. Memory-aware orchestration — the advisor in action
+    # -----------------------------------------------------------------
+    _rule("6. Memory-aware orchestration — advisor digest", BLUE)
+    print(
+        f"  {D}  The last scenario repeats scenario 1. The advisor saw that "
+        f"prior\n  {D}  run and injected a 'memory.consult' step into the "
+        f"trace of the repeat.{R}\n"
+    )
+
+    # The last result is the repeat run (scenario 4 added above).
+    repeat = results[-1]
+    digest = repeat.prior_runs or {}
+    print(f"  • gene/drug/pop:          "
+          f"{digest.get('gene')}/{digest.get('drug')}/{digest.get('population')}")
+    print(f"  • prior runs found:       {digest.get('count')}")
+    print(f"  • concordance:            {digest.get('concordance_hint')}")
+    print(f"  • verdicts in history:    {digest.get('recent_verdicts')}")
+    print(f"  • planner-hint:           {digest.get('hint')!r}")
+
+    # Prove the trace step lands alongside the deterministic pipeline steps.
+    consult_steps = [
+        s for s in repeat.context.orchestration_trace.steps
+        if s.name == "memory.consult"
+    ]
+    if consult_steps:
+        s = consult_steps[0]
+        print(
+            f"\n  {D}  memory.consult step in trace — "
+            f"origin={s.origin} duration={s.duration_ms:.3f}ms{R}"
+        )
+
+    # -----------------------------------------------------------------
+    # 7. MCP observability — tool-level call metrics
+    # -----------------------------------------------------------------
+    _rule("7. MCP observability snapshot", CYAN)
 
     snap = client.snapshot()
     print(
@@ -278,15 +361,22 @@ def run_demo() -> None:
     # Done
     # -----------------------------------------------------------------
     print(f"\n  {B}{'═' * 68}{R}")
+    # Re-fetch after sections 5/6 — earlier snapshot predates the
+    # verification log rows, so pull fresh counts for the tagline.
+    counts = retrieval.service_summary()
     print(
         f"  {B}{CYAN}  {len(results)} runs · "
         f"{counts['executions']} memory · "
         f"{counts['traces']} traces · "
         f"{counts['contexts']} contexts · "
         f"{counts['provenance']} claims · "
-        f"{counts['evidence']} evidence{R}"
+        f"{counts['evidence']} evidence · "
+        f"{counts['verification_logs']} verif rows{R}"
     )
-    print(f"  {B}{CYAN}  MCP remembers. Provenance explains. Replay rehydrates.{R}")
+    print(
+        f"  {B}{CYAN}  MCP remembers. Advisor consults. Provenance explains. "
+        f"Replay rehydrates.{R}"
+    )
     print(f"  {B}{'═' * 68}{R}\n")
 
     # Clean up any backend resources (Mongo client pool in particular).

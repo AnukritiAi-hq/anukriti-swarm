@@ -18,7 +18,7 @@ All five services share a single `MCPClient`, a single `MCPToolRegistry` (observ
 
 ## Design principles
 
-1. **Protocol-shaped.** Every operation is a named tool call dispatched through the registry. The 26 registered tool names (`memory.store`, `traces.get`, `provenance.chain`, …) form a stable public protocol; the backend can change without touching callers.
+1. **Protocol-shaped.** Every operation is a named tool call dispatched through the registry. The 31 registered tool names (`memory.store`, `traces.get`, `provenance.chain`, `verification.record`, …) form a stable public protocol; the backend can change without touching callers.
 2. **Deterministic-first, observable everywhere.** The observability wrapper folds every invocation into `MCPObservability.snapshot()` — a dashboard rendering the full tool-call history is one accessor away.
 3. **No hot-path state.** Services are dataclasses with a client reference and a collection name. No in-memory caches, no singletons. Backend + observability are the only shared state.
 4. **Best-effort evidence, strict core.** Memory / trace / context persistence are required for `PersistenceReport.ok`. Evidence indexing and extra provenance claims are best-effort so a malformed citation can't prevent the run from landing.
@@ -54,12 +54,14 @@ flowchart TB
             CTX[MCPContextManager]
             PRV[MCPProvenanceStore]
             EVD[MCPEvidenceCache]
+            VLG[MCPVerificationLog]
         end
         REG --- MEM
         REG --- TRC
         REG --- CTX
         REG --- PRV
         REG --- EVD
+        REG --- VLG
     end
 
     subgraph backends[Storage]
@@ -79,6 +81,7 @@ flowchart TB
     PH --> CTX
     PH --> PRV
     PH --> EVD
+    PH --> VLG
 
     CL --> IM
     CL -. "if MONGODB_URI set" .-> MG
@@ -88,6 +91,7 @@ flowchart TB
     AGG --> CTX
     AGG --> PRV
     AGG --> EVD
+    AGG --> VLG
     RB -. "restore_context()" .-> CTX
 ```
 
@@ -291,7 +295,7 @@ Legacy rows carry a `legacy: True` tag in the shared collections so queries can 
 
 ```
 integrations/mcp/
-├── __init__.py                public API (~20 names)
+├── __init__.py                public API (~25 names)
 ├── models.py                  MCPToolCall / Result / Observability / Origin
 ├── registry.py                MCPToolRegistry + audit hook
 ├── client.py                  MCPClient facade
@@ -304,7 +308,9 @@ integrations/mcp/
 ├── context_manager.py         MCPContextManager        (5 tools)
 ├── provenance.py              MCPProvenanceStore       (6 tools)
 ├── evidence.py                MCPEvidenceCache         (6 tools)
+├── verification_log.py        MCPVerificationLog       (5 tools)
 ├── retrieval.py               MCPRetrieval aggregator + ReplayBundle
+├── memory_advisor.py          MCPMemoryAdvisor (read-side / planner hint)
 └── persistence_hook.py        MCPPersistenceHook for orchestration results
 
 integrations/mongodb_mcp/
@@ -330,9 +336,38 @@ Measured against the in-memory backend on a single run (`CYP2C19 *2/*2 + clopido
 
 Against MongoDB Atlas the same operations add network RTT (typically 30–100 ms per insert). The orchestration path itself stays deterministic-fast (<2 ms deterministic + ~400 ms LLM on live runs); persistence is non-blocking in the sense that it runs after `OrchestrationResult` is already constructed, so the caller sees the result before persistence completes if they want to parallelize.
 
+## Verification log — per-check audit trail
+
+`MCPVerificationLog` decomposes each run's verification report into **one document per check**, not one per run. Memory + provenance already carry the aggregate verdict; this service preserves the per-check breakdown (`evidence_grounding`, `deterministic_boundary`, `provenance`, `guideline_conflict`, `sparse_population_data`, `hallucination_detection`) so cross-run analytics like "which runs warned on `sparse_population` for SAS?" are cheap field filters instead of JSON-array scans.
+
+Wire-up:
+
+- `MCPPersistenceHook` calls `verification.record_run` as a 6th step after the five original services. Malformed verification dicts emit a warning in `PersistenceReport.errors` but never block the rest of the run from landing.
+- `MCPRetrieval.lookup(cid)` now returns verification rows alongside memory/trace/context/provenance — four runs × six checks = 24 rows per demo session.
+- `MCPRetrieval.verification_history_for_check("evidence_grounding")` is a thin convenience over `verification.failures` for cross-run audits.
+
+## Memory-aware orchestration (read path)
+
+The persistence hook handled **writes** — every run lands in MCP. `MCPMemoryAdvisor` handles the symmetric **read** side: before planning, the orchestrator consults MCP for prior runs matching the `(gene, drug, population)` axes and gets back a compact `PriorRunDigest`:
+
+```python
+advisor = MCPMemoryAdvisor(client)
+orchestrator = GeminiOrchestrator(memory_advisor=advisor)
+# ... second run on (CYP2C19, clopidogrel, SAS):
+result.prior_runs
+# {'count': 1, 'concordance_hint': 'aligned',
+#  'recent_verdicts': ['passed'],
+#  'hint': '1 prior run(s) (all passed)'}
+```
+
+Each consultation records one `memory.consult` trace step, so the read side appears in the same observability lens as the write side. Consultation failure is non-fatal — the advisor logs to `ctx.errors` and returns `None`, so planning proceeds unchanged.
+
+**Opt-in by design.** Orchestrators constructed without a `memory_advisor` argument behave identically to before; every existing demo and test continues to work with zero changes.
+
 ## What's deliberately **not** in scope
 
 - **Transactional writes across services.** Each service's insert is independent. A crash between `memory.store` and `traces.store` leaves an orphan memory row — `MCPRetrieval.lookup` handles this gracefully (`has_memory=True, has_trace=False`), but it's worth knowing.
 - **Retention policies / TTLs.** The collections grow unbounded. For the hackathon this is fine; production deployment should add per-collection TTL indexes (48h for traces, 30d for memory, permanent for provenance + evidence would be one reasonable default).
 - **Cross-run provenance joins.** `provenance.by_source` finds claims citing a given source, but there's no "show me every run that reached the same phenotype" query yet. Trivial to add on top of the existing primitives; not needed for any current call site.
 - **Authentication / ACLs.** Tools are globally callable. The `MCPOrigin` tag records *who* requested each call for audit purposes but doesn't enforce access.
+ds *who* requested each call for audit purposes but doesn't enforce access.
