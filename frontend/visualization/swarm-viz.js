@@ -362,6 +362,8 @@ function renderFinalizeFromReport(report) {
   // provenance / orchestration panels with the aggregated report.
   renderSufficiencyPanel(report);
   renderPopulationIntel(report);
+  renderKnowledgeGraph(report);
+  renderGovernance(report);
   renderOrchestrationFromReport(report);
   renderPharmacogeneFromReport(report);
   renderNarrativeFromReport(report);
@@ -391,6 +393,7 @@ async function runAnalysisFetch(scope) {
 function revealSections() {
   const sections = [
     "swarm-activity", "sufficiency-section", "population-intel-section",
+    "kg-explorer-section", "governance-section",
     "orchestration-viz", "population-section",
     "pharmacogene-section", "evidence-section", "verification-section",
     "confidence-section", "narrative-section", "provenance-section",
@@ -424,6 +427,8 @@ function renderFromReport(report, events) {
   renderTraceFromEvents(events || []);
   renderSufficiencyPanel(report);
   renderPopulationIntel(report);
+  renderKnowledgeGraph(report);
+  renderGovernance(report);
   renderOrchestrationFromReport(report);
   renderPopulationFromReport(report);
   renderPharmacogeneFromReport(report);
@@ -810,6 +815,260 @@ function renderProvenanceFromReport(report) {
       <div>Rules triggered: ${(report.deterministic_rules || []).join(", ")}</div>
       <div>Provenance records: ${(report.provenance_chain || []).length}</div>
       <div>Source: live backend</div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge Graph Explorer (D3 force-directed) — phase 4 commit 14
+// ---------------------------------------------------------------------------
+
+function renderKnowledgeGraph(report) {
+  const paths = report.graph_traversal || [];
+  const svgEl = document.getElementById("kg-svg");
+  const legendEl = document.getElementById("kg-legend");
+  if (!svgEl || !legendEl) return;
+
+  // Clear previous render.
+  svgEl.innerHTML = "";
+  legendEl.innerHTML = "";
+
+  if (paths.length === 0) {
+    svgEl.innerHTML = `<text x="50%" y="50%" fill="#64748b"
+      font-family="JetBrains Mono, monospace" font-size="13"
+      text-anchor="middle">no graph paths traversed for this run</text>`;
+    return;
+  }
+
+  // Extract nodes + edges from all traversed paths. The paths come
+  // from the backend already as GraphPath.to_dict entries, each with
+  // nodes and edges arrays.
+  const nodeMap = new Map();
+  const edges = [];
+  const edgeKeys = new Set();
+  for (const path of paths) {
+    for (const nodeId of (path.nodes || [])) {
+      if (!nodeMap.has(nodeId)) {
+        const [kind, ...nameParts] = nodeId.split(":");
+        nodeMap.set(nodeId, {
+          id: nodeId, kind, name: nameParts.join(":"),
+        });
+      }
+    }
+    for (const edge of (path.edges || [])) {
+      const key = `${edge.source_id}|${edge.kind}|${edge.target_id}`;
+      if (edgeKeys.has(key)) continue;
+      edgeKeys.add(key);
+      edges.push({
+        source: edge.source_id,
+        target: edge.target_id,
+        kind: edge.kind,
+        weight: edge.weight,
+      });
+    }
+  }
+
+  const nodes = Array.from(nodeMap.values());
+  // Lazy-require d3 (loaded via the <script src> tag in index.html).
+  if (typeof d3 === "undefined") {
+    svgEl.innerHTML = `<text x="50%" y="50%" fill="#ef4444"
+      font-family="JetBrains Mono, monospace" font-size="13"
+      text-anchor="middle">d3.js not loaded — KG explorer disabled</text>`;
+    return;
+  }
+
+  // Colour palette for the 10 closed NodeKinds.
+  const NODE_COLOURS = {
+    population: "#06b6d4",
+    ancestry: "#0ea5e9",
+    gene: "#10b981",
+    variant: "#22c55e",
+    allele: "#84cc16",
+    phenotype: "#f59e0b",
+    drug: "#ef4444",
+    adverse_reaction: "#dc2626",
+    guideline: "#8b5cf6",
+    evidence_paper: "#6366f1",
+  };
+  const nodeColour = (n) => NODE_COLOURS[n.kind] || "#94a3b8";
+
+  // Bounding box from the parent card; D3 uses numeric sizes.
+  const rect = svgEl.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = 420;
+  const svg = d3.select(svgEl).attr("viewBox", `0 0 ${width} ${height}`);
+
+  // Arrowhead marker so directed edges are visible.
+  svg.append("defs").append("marker")
+    .attr("id", "kg-arrow")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 22)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5")
+    .attr("fill", "#64748b");
+
+  // Force simulation.
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges).id(d => d.id).distance(90).strength(0.5))
+    .force("charge", d3.forceManyBody().strength(-280))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(32));
+
+  // Edges first so they render behind nodes.
+  const link = svg.append("g")
+    .selectAll("line")
+    .data(edges)
+    .join("line")
+    .attr("stroke", "#2d3748")
+    .attr("stroke-width", d => 1 + (d.weight || 0) * 1.5)
+    .attr("marker-end", "url(#kg-arrow)");
+
+  // Edge-kind labels (only on non-trivial edges to reduce clutter).
+  const linkLabel = svg.append("g")
+    .selectAll("text")
+    .data(edges.filter(e => e.kind !== "higher_frequency_in" || e.weight >= 0.05))
+    .join("text")
+    .attr("font-family", "JetBrains Mono, monospace")
+    .attr("font-size", 8)
+    .attr("fill", "#64748b")
+    .attr("text-anchor", "middle")
+    .text(d => d.kind);
+
+  // Nodes.
+  const node = svg.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .call(d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => {
+        d.fx = event.x; d.fy = event.y;
+      })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      }));
+
+  node.append("circle")
+    .attr("r", 14)
+    .attr("fill", nodeColour)
+    .attr("stroke", "#0a0e17")
+    .attr("stroke-width", 2);
+
+  node.append("text")
+    .text(d => d.name)
+    .attr("font-family", "JetBrains Mono, monospace")
+    .attr("font-size", 10)
+    .attr("fill", "#e2e8f0")
+    .attr("text-anchor", "middle")
+    .attr("dy", 28);
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+    linkLabel
+      .attr("x", d => (d.source.x + d.target.x) / 2)
+      .attr("y", d => (d.source.y + d.target.y) / 2 - 2);
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  // Legend.
+  const kindsPresent = Array.from(new Set(nodes.map(n => n.kind))).sort();
+  legendEl.innerHTML = `
+    <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;
+         font-family:var(--font-mono);font-size:0.75rem">
+      ${kindsPresent.map(k => `
+        <div style="display:flex;align-items:center;gap:0.35rem">
+          <span style="display:inline-block;width:10px;height:10px;
+               background:${NODE_COLOURS[k] || "#94a3b8"};
+               border-radius:50%"></span>
+          <span style="color:var(--text-secondary)">${k}</span>
+        </div>`).join("")}
+    </div>
+    <div style="margin-top:0.5rem;font-family:var(--font-mono);font-size:0.75rem;
+         color:var(--text-dim)">
+      ${nodes.length} nodes · ${edges.length} edges · drag to explore
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic Governance View — phase 4 commit 14
+// ---------------------------------------------------------------------------
+
+function renderGovernance(report) {
+  const el = document.getElementById("governance-output");
+  if (!el) return;
+  const rules = report.deterministic_rules || [];
+  const provenance = report.provenance_chain || [];
+
+  // Group rules by family prefix (cpic.* / hla_b.* / verification.* /
+  // decision-family single-word values like 'sufficient' / verdict V-ids
+  // / uncertainty tiers).
+  const families = {
+    "CPIC Rules": rules.filter(r => r.startsWith("cpic.")),
+    "HLA-B Rules": rules.filter(r => r.startsWith("hla_b.")),
+    "Verification Rules": rules.filter(r => r.startsWith("verification.")),
+    "Sufficiency Decisions": rules.filter(r => [
+      "sufficient", "pass_with_caveat", "downgrade", "request_more",
+      "escalate", "abstain", "block",
+    ].includes(r)),
+    "Verdict Rules (V1–V10)": rules.filter(r => /^V\d+$/.test(r)),
+    "Uncertainty Tiers (U1–U9)": rules.filter(r => [
+      "low", "moderate", "high", "unsafe",
+    ].includes(r)),
+  };
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+      ${Object.entries(families)
+        .filter(([_, list]) => list.length > 0)
+        .map(([family, list]) => `
+          <div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);
+                 text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">
+              ${family}</div>
+            <div>${list.map(r => `<span class="chip">${r}</span>`).join("")}</div>
+          </div>
+        `).join("")}
+    </div>
+    <div style="margin-top:1rem">
+      <div style="font-size:0.8rem;color:var(--text-secondary);
+           text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">
+        Provenance Chain (${provenance.length} records)
+      </div>
+      ${provenance.length === 0
+        ? `<div style="color:var(--text-dim);font-size:0.85rem">no persisted records</div>`
+        : `<div style="font-family:var(--font-mono);font-size:0.8rem;line-height:1.8">
+            ${provenance.map((p, i) => `
+              <div style="border-left:2px solid var(--accent-purple);
+                   padding:0.5rem 0.75rem;margin:0.25rem 0;background:var(--bg-secondary);
+                   border-radius:var(--radius)">
+                <div style="color:var(--accent-cyan)">#${i + 1}  ${p.rule_id || "(no rule)"}</div>
+                <div style="color:var(--text-secondary);margin-top:0.2rem">
+                  agent: ${p.generating_agent || "?"}
+                </div>
+                <div style="color:var(--text-secondary)">
+                  sources: ${(p.evidence_sources || []).join(", ") || "—"}
+                </div>
+                <div style="color:var(--text-dim);font-size:0.75rem;margin-top:0.2rem">
+                  claim_id: ${(p.claim_id || "").slice(0, 10)}...
+                  ${p.parent_claim_id ? `← parent: ${p.parent_claim_id.slice(0,10)}...` : ""}
+                </div>
+              </div>
+            `).join("")}
+          </div>`
+      }
     </div>
   `;
 }
