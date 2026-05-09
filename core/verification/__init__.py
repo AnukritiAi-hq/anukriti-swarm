@@ -39,4 +39,16 @@ Design principles:
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from core.verification.scoring import (
+    VerificationScore,
+    VerificationTier,
+    classify_score,
+    worse_of,
+)
+
+__all__ = [
+    "VerificationScore",
+    "VerificationTier",
+    "classify_score",
+    "worse_of",
+]
