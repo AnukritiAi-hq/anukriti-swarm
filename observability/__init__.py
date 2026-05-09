@@ -68,6 +68,7 @@ from observability.graph import (
     WorkflowGraphBuilder,
 )
 from observability.visualizer import TraceVisualizer, VisualBundle
+from observability.replay import FailureAnalyzer, FailureSummary, TraceReplayer
 
 __all__: list[str] = [
     # Tracer
@@ -92,4 +93,8 @@ __all__: list[str] = [
     # Visualizer
     "TraceVisualizer",
     "VisualBundle",
+    # Replay + failure
+    "TraceReplayer",
+    "FailureAnalyzer",
+    "FailureSummary",
 ]
