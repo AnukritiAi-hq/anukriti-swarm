@@ -71,18 +71,37 @@ from __future__ import annotations
 from interoperability.agent_bus import AgentHandler, AgentMessageBus, BusObserver
 from interoperability.shared_context import (
     AgentContextEnvelope,
+    AlleleFrequency,
     BiomedicalContextType,
     ConfidenceLevel,
+    DrugContext,
+    EvidenceEdge,
+    EvidenceNode,
+    PhenotypeState,
+    SharedBiomedicalContext,
+    VerificationEdge,
+    VerificationNode,
     VerificationState,
 )
 
 # Public API — filled in progressively across the 10 commits.
 __all__: list[str] = [
+    # Envelope + enums
     "AgentContextEnvelope",
     "BiomedicalContextType",
     "VerificationState",
     "ConfidenceLevel",
+    # Bus
     "AgentMessageBus",
     "AgentHandler",
     "BusObserver",
+    # Shared context + graph shapes
+    "SharedBiomedicalContext",
+    "EvidenceNode",
+    "EvidenceEdge",
+    "VerificationNode",
+    "VerificationEdge",
+    "PhenotypeState",
+    "DrugContext",
+    "AlleleFrequency",
 ]
