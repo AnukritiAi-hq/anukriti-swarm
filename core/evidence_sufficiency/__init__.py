@@ -110,6 +110,10 @@ from core.evidence_sufficiency.sufficiency import (
     SufficiencyDecisionEngine,
     SufficiencyReport,
 )
+from core.evidence_sufficiency.verifier import (
+    EvidenceVerdict,
+    EvidenceVerificationResult,
+)
 
 __all__ = [
     # coverage
@@ -134,4 +138,7 @@ __all__ = [
     "SufficiencyDecision",
     "SufficiencyDecisionEngine",
     "SufficiencyReport",
+    # verifier
+    "EvidenceVerdict",
+    "EvidenceVerificationResult",
 ]

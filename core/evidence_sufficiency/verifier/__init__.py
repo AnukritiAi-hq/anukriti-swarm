@@ -1,7 +1,7 @@
 """Evidence Sufficiency — ``verifier/`` subpackage.
 
-Hosts ``SetLevelEvidenceVerifier`` (SURE-RAG-inspired) and its result
-type ``EvidenceVerificationResult``.
+Hosts ``SetLevelEvidenceVerifier`` (SURE-RAG-inspired) and its
+result type ``EvidenceVerificationResult``.
 
 Where ``core.verification.BiomedicalClaimValidator`` operates on one
 claim at a time, the set-level verifier reasons over the *whole
@@ -16,8 +16,24 @@ evidence bundle* for a run and emits exactly one of five outcomes:
 This is a *compositional* verifier — it does not re-open documents or
 re-run rules; it reads coverage + conflict + uncertainty outputs that
 the preceding analyzers already computed.
+
+Public surface:
+
+    EvidenceVerdict               closed 5-value enum (commit 12)
+    EvidenceVerificationResult    frozen per-run verdict record
+                                  (commit 12)
+    SetLevelEvidenceVerifier      deterministic 10-rule verifier
+                                  (commit 13)
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from core.evidence_sufficiency.verifier.result import (
+    EvidenceVerdict,
+    EvidenceVerificationResult,
+)
+
+__all__ = [
+    "EvidenceVerdict",
+    "EvidenceVerificationResult",
+]
