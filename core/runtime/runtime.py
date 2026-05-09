@@ -286,13 +286,19 @@ class SwarmRuntime:
         if not allele2:
             allele1, allele2 = ctx.genotype, "positive"
 
+        pharmacogene_result = _phenotype_for(ctx)
+        population_result = _pop_result_for(ctx, self._indexer)
+        recommendations = _recommendations_for(
+            ctx, pharmacogene_result.get("phenotype", ""),
+        )
+
         run = {
             "gene": ctx.gene, "drug": ctx.drug,
             "population": ctx.population,
             "allele1": allele1 or "*1", "allele2": allele2 or "*1",
-            "pharmacogene_result": _phenotype_for(ctx),
-            "population_result": _pop_result_for(ctx, self._indexer),
-            "recommendations": _recommendations_for(ctx),
+            "pharmacogene_result": pharmacogene_result,
+            "population_result": population_result,
+            "recommendations": recommendations,
         }
 
         provenance_records = _build_provenance(ctx, retrieval_bundle["citations"])
@@ -488,17 +494,35 @@ def _pop_result_for(
     return {}
 
 
-def _recommendations_for(ctx: UnifiedExecutionContext) -> list[dict[str, Any]]:
-    table = {
-        "clopidogrel": ("Use prasugrel or ticagrelor",
-                        ["PMID:34032273", "PA166169660"]),
-        "codeine": ("Avoid codeine; consider morphine directly",
-                    ["PMID:32722396"]),
-        "carbamazepine": ("Avoid carbamazepine",
-                          ["PMID:24407187", "PMID:36123456"]),
-    }
-    text, refs = table.get(ctx.drug, ("", []))
-    return [{"recommendation": text, "evidence_refs": refs}] if text else []
+def _recommendations_for(
+    ctx: UnifiedExecutionContext,
+    phenotype: str,
+) -> list[dict[str, Any]]:
+    """Real CPIC recommendation lookup keyed on (gene, phenotype, drug).
+
+    Uses guidelines.cpic.lookup_recommendation which walks the
+    in-tree CPIC guideline table. On hit, returns one dict matching
+    the sufficiency layer's expected shape. On miss, returns [] —
+    which correctly causes the RECOMMENDATION facet to read as
+    MISSING (triggering R3 BLOCK).
+
+    Evidence refs are pulled directly off the CPIC record's PMID
+    field so the chain is honest: the recommendation text IS the
+    CPIC guideline's recommendation field verbatim.
+    """
+
+    from guidelines.cpic import lookup_recommendation
+
+    rec = lookup_recommendation(ctx.gene, phenotype, ctx.drug)
+    if rec is None:
+        return []
+    return [{
+        "recommendation": rec.recommendation,
+        "evidence_refs": [rec.guideline_id, rec.pmid],
+        "strength": rec.strength,
+        "classification": rec.classification,
+        "guideline_version": rec.guideline_version,
+    }]
 
 
 def _build_provenance(
