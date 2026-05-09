@@ -47,10 +47,16 @@ Design principles:
 
 from __future__ import annotations
 
-# Public API — filled in progressively across the 11 commits. Each
-# follow-up commit adds its own import line + its name(s) to
-# ``__all__`` so the package's public surface grows in lock-step
-# with the commit history. Today (commit 1) the package is an empty
-# scaffold; importing ``from observability import X`` will fail
-# until the commit that adds ``X`` lands.
-__all__: list[str] = []
+from observability.tracer import (
+    EventHandler,
+    EventKind,
+    ExecutionEvent,
+    ExecutionTracer,
+)
+
+__all__: list[str] = [
+    "ExecutionTracer",
+    "ExecutionEvent",
+    "EventKind",
+    "EventHandler",
+]
