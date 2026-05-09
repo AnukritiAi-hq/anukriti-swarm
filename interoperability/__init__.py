@@ -69,7 +69,10 @@ Public surface (lands progressively):
 from __future__ import annotations
 
 from interoperability.agent_bus import AgentHandler, AgentMessageBus, BusObserver
-from interoperability.mcp_protocol import ProvenancePropagationLayer
+from interoperability.mcp_protocol import (
+    ProvenancePropagationLayer,
+    VerificationStatePropagator,
+)
 from interoperability.shared_context import (
     AgentContextEnvelope,
     AlleleFrequency,

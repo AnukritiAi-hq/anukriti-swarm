@@ -19,7 +19,11 @@ from __future__ import annotations
 from interoperability.mcp_protocol.provenance_layer import (
     ProvenancePropagationLayer,
 )
+from interoperability.mcp_protocol.verification_propagator import (
+    VerificationStatePropagator,
+)
 
 __all__: list[str] = [
     "ProvenancePropagationLayer",
+    "VerificationStatePropagator",
 ]
