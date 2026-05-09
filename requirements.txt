@@ -27,3 +27,9 @@ pymongo==4.17.0
 pytest==8.2.0
 ruff==0.4.4
 mypy==1.10.0
+
+# Deterministic pharmacogenomics core (Phase 1 extraction).
+# Layer 2 of anukriti-pgx-core — CPIC-pinned phenotype engine.
+# rules/phenotype_rules.py is a thin re-export over this package.
+# Editable sibling path during local dev; pin a release when published.
+-e ../anukriti-pgx-core
