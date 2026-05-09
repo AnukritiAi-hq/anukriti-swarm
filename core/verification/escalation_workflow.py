@@ -42,11 +42,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from agents.verification.agent import VerificationOutcome
 from core.verification.scoring import VerificationTier
 from core.verification.trace import VerificationTrace
+
+if TYPE_CHECKING:  # pragma: no cover — type-checker only
+    from agents.verification.agent import VerificationOutcome
 
 
 class EscalationAction(str, Enum):
