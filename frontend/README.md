@@ -89,9 +89,29 @@ full endpoint reference and WebSocket protocol.
 - **Live-first, offline-fallback** — the primary UX assumes a backend; the mock is a safety net, not the default
 - **Dark scientific theme** — clinical precision, monospace data, subdued palette
 - **Progressive reveal** — sections appear as the lifecycle emits events
+- **Cinematic pacing** — a 320ms per-stage delay is applied client-side so the orchestration lifecycle is visible even though the backend completes in ~5ms. Labeled as presentation pacing in the UI, not disguised as computation time. Toggle off for raw-speed engineer mode.
 - **Origin labelling** — green borders (deterministic/established) vs purple (generative/narrative)
 - **Closed enums everywhere** — decision / verdict / uncertainty / bias use fixed colour maps, not dynamic styling
 - **D3 only for graph views** — vendored single-file copy; no build step, no npm install
+- **Real data, no mocks** — phenotype inference, population frequencies, and CPIC recommendations all come from the repository's real deterministic sources (see below)
+
+## Real-data guarantees
+
+Every value rendered by the UI can be traced back to a deterministic source:
+
+| Signal | Source |
+|---|---|
+| Phenotype | `rules/phenotype_rules.py:infer_phenotype` (CPIC activity-score) + `agents/pharmacogene/hla_b.py:HLABAgent` (binary carrier status) |
+| Population allele frequency | `knowledge_graph.PopulationGraphIndexer.alleles_for(pop)` from HIGHER_FREQUENCY_IN edges |
+| Recommendation text | `guidelines/cpic.py:lookup_recommendation` — verbatim CPIC guideline text + strength + PMID |
+| Evidence citations | `retrieval/evidence/documents.py` seeded CPIC/PharmGKB/PubMed documents |
+| KG paths | `knowledge_graph.MultiHopReasoner` bounded BFS (≤4 hops) over the 37-node / 34-edge seed graph |
+| Sufficiency decision | `core/evidence_sufficiency/sufficiency/decision_engine.py` — 12-rule closed table |
+| Verdict | `core/evidence_sufficiency/verifier/set_level.py` — 10-rule closed table |
+| Uncertainty tier | `core/evidence_sufficiency/uncertainty/engine.py` — 9-rule closed table |
+| Bias findings | `core/evidence_sufficiency/uncertainty/bias_detector.py` — 3-class detector with numeric thresholds |
+
+The only "mock" is the offline-fallback render that fires when the backend is unreachable on page load; it's labeled as such via the yellow `● offline` badge.
 
 ## Future (out of scope for session #7)
 
