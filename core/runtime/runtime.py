@@ -291,7 +291,7 @@ class SwarmRuntime:
             "population": ctx.population,
             "allele1": allele1 or "*1", "allele2": allele2 or "*1",
             "pharmacogene_result": _phenotype_for(ctx),
-            "population_result": _pop_result_for(ctx),
+            "population_result": _pop_result_for(ctx, self._indexer),
             "recommendations": _recommendations_for(ctx),
         }
 
@@ -445,17 +445,47 @@ def _phenotype_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
     }
 
 
-def _pop_result_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
-    from core.models.population import SuperPopulation
-    freqs = {
-        ("CYP2C19", SuperPopulation.SAS): 0.36,
-        ("CYP2D6", SuperPopulation.AFR): 0.06,
-        ("HLA-B", SuperPopulation.EAS): 0.08,
-    }
-    f = freqs.get((ctx.gene, ctx.population), 0.0)
-    if f == 0.0:
+def _pop_result_for(
+    ctx: UnifiedExecutionContext,
+    indexer: PopulationGraphIndexer | None = None,
+) -> dict[str, Any]:
+    """Real per-population allele frequency from the KG indexer.
+
+    Walks the indexer's alleles_for(population) output and picks the
+    frequency of the first allele in the context genotype that has
+    a known edge to the target population. When no such edge exists
+    (AFR + codeine in the seed KG, for example), returns {} which
+    correctly causes the POPULATION facet to read as UNCERTAIN /
+    MISSING in the sufficiency layer — the whole point of
+    ancestry-scarcity reporting.
+
+    No indexer -> {} (defensive; unified_demo / runtime always
+    supply one).
+    """
+
+    if indexer is None:
         return {}
-    return {"frequency": f, "population": ctx.population.value}
+
+    # The allele id in the KG is 'allele:<GENE>*<NAME>', where NAME
+    # excludes the leading '*'. Extract the first allele from the
+    # context genotype and match against the indexer's per-population
+    # list by ALLELE node id (not by name — the indexer returns Nodes).
+    parts = [p.strip() for p in ctx.genotype.split("/") if p.strip()]
+    if not parts:
+        return {}
+    first_allele = parts[0].lstrip("*")
+    target_id = f"allele:{ctx.gene}*{first_allele}"
+
+    for node, freq in indexer.alleles_for(ctx.population):
+        if node.id == target_id:
+            return {
+                "frequency": round(float(freq), 4),
+                "population": ctx.population.value,
+                "allele_id": target_id,
+                "source": "knowledge_graph.HIGHER_FREQUENCY_IN",
+            }
+    # No matching edge for this allele in this population.
+    return {}
 
 
 def _recommendations_for(ctx: UnifiedExecutionContext) -> list[dict[str, Any]]:
