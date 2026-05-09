@@ -54,6 +54,11 @@ from knowledge_graph.builder import (
     PopulationGraphIndexer,
 )
 from knowledge_graph.graph import PharmacogenomicKnowledgeGraph
+from knowledge_graph.reasoner import (
+    GraphPath,
+    MultiHopReasoner,
+    PathEvidenceRetriever,
+)
 from knowledge_graph.schema import (
     Edge,
     EdgeKind,
@@ -78,4 +83,8 @@ __all__ = [
     # builder + indexer
     "GraphContextBuilder",
     "PopulationGraphIndexer",
+    # reasoner
+    "GraphPath",
+    "MultiHopReasoner",
+    "PathEvidenceRetriever",
 ]

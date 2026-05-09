@@ -312,8 +312,9 @@ _edges_contra = [
 ]
 
 
-# ASSOCIATED_WITH: drug -> adverse reaction
+# ASSOCIATED_WITH: drug -> adverse reaction + allele -> phenotype
 _edges_assoc = [
+    # drug -> adverse reaction
     _edge(_DRUG_CLOPIDOGREL, _ADR_MACE, EdgeKind.ASSOCIATED_WITH,
           payload={"mechanism": "reduced_platelet_inhibition"},
           stamp=_stamp("CPIC:CYP2C19:clopidogrel:2022", "cpic")),
@@ -323,6 +324,26 @@ _edges_assoc = [
     _edge(_DRUG_CODEINE, _ADR_RESP_DEP, EdgeKind.ASSOCIATED_WITH,
           payload={"mechanism": "ultrarapid_morphine_formation"},
           stamp=_stamp("CPIC:CYP2D6:codeine:2023", "cpic")),
+    # allele -> phenotype (CPIC activity-score rule)
+    _edge(_ALL_CYP2C19_2, _PHEN_CYP2C19_PM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_PM_when_homozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_CYP2C19_3, _PHEN_CYP2C19_PM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_PM_when_homozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_CYP2C19_2, _PHEN_CYP2C19_IM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_IM_when_heterozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_CYP2D6_4, _PHEN_CYP2D6_PM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_PM_when_homozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_HLAB_1502, _PHEN_HLAB_POS, EdgeKind.ASSOCIATED_WITH,
+          payload={"carrier_status": "positive"},
+          stamp=_stamp("cpic.hla_b.risk_allele", "rule")),
 ]
 
 
