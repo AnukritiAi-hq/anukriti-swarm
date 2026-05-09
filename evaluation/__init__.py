@@ -51,8 +51,16 @@ Design principles:
 
 from __future__ import annotations
 
-# Public API — filled in progressively across the 12 commits. Each
-# follow-up commit adds its own import line + its name(s) to
-# ``__all__`` so the package's public surface grows in lock-step
-# with the commit history.
-__all__: list[str] = []
+from evaluation.base import (
+    EvaluationCase,
+    EvaluationResult,
+    EvaluationSuite,
+    SuiteSummary,
+)
+
+__all__: list[str] = [
+    "EvaluationCase",
+    "EvaluationResult",
+    "EvaluationSuite",
+    "SuiteSummary",
+]
