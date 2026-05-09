@@ -150,3 +150,16 @@ body {
 /* Footer */
 .footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.8rem; }
 .dim { opacity: 0.6; margin-top: 0.25rem; }
+
+/* Backend status badge (phase 4) */
+.backend-status {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.status-live { color: var(--accent-green); font-weight: 600; }
+.status-offline { color: var(--accent-yellow); font-weight: 600; }
