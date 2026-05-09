@@ -110,6 +110,7 @@ from integrations.mcp.persistence_hook import (
     MCPPersistenceHook,
     PersistenceReport,
 )
+from integrations.mcp.memory_advisor import MCPMemoryAdvisor, PriorRunDigest
 
 
 # MongoDB backend stays lazy — import only if pymongo is available.

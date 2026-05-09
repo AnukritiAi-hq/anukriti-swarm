@@ -77,6 +77,7 @@ class OrchestrationResult:
     coordination: CoordinationResult
     total_duration_ms: float = 0.0
     errors: list[str] = field(default_factory=list)
+    prior_runs: dict[str, Any] | None = None
 
     # --- convenience accessors --------------------------------------------
 
@@ -140,6 +141,7 @@ class GeminiOrchestrator:
         planner: WorkflowPlanner | None = None,
         router: AgentRouter | None = None,
         coordinator: ExecutionCoordinator | None = None,
+        memory_advisor: Any = None,
     ) -> None:
         # Shared boundary across planner + coordinator so policy is uniform.
         self.boundary = boundary or GenerativeBoundary()
@@ -154,6 +156,11 @@ class GeminiOrchestrator:
             boundary=self.boundary,
             pipeline_runner=pipeline_runner,
         )
+        # Optional memory-aware pre-consultation. Duck-typed: any
+        # object exposing ``.consult(gene, drug, population)`` returning
+        # an object with ``to_dict()`` works. Typed ``Any`` so
+        # core.orchestrator stays free of MCP imports.
+        self.memory_advisor = memory_advisor
 
     # ------------------------------------------------------------------
     # Public entry points
@@ -248,6 +255,9 @@ class GeminiOrchestrator:
     def _drive(self, ctx: SwarmExecutionContext) -> OrchestrationResult:
         """Run the full lifecycle on an already-assembled context."""
         t0 = time.perf_counter()
+
+        prior_runs_dict = self._consult_memory(ctx)
+
         plan = self.planner.plan(ctx)
         routing = self.router.route(ctx, plan.steps)
         coordination = self.coordinator.execute(ctx, routing)
@@ -266,7 +276,41 @@ class GeminiOrchestrator:
             coordination=coordination,
             total_duration_ms=total_ms,
             errors=list(ctx.errors),
+            prior_runs=prior_runs_dict,
         )
+
+    def _consult_memory(
+        self, ctx: SwarmExecutionContext
+    ) -> dict[str, Any] | None:
+        """Opt-in memory-aware pre-consultation.
+
+        Consulted once at the head of ``_drive`` when a ``memory_advisor``
+        was supplied. Records one ``memory.consult`` trace step so the
+        read-side of memory-aware orchestration shows up in the same
+        observability view as the deterministic pipeline stages.
+        Consultation failure is non-fatal — we log to ``ctx.errors``
+        and return ``None`` so planning proceeds unchanged.
+        """
+        if self.memory_advisor is None:
+            return None
+        t0 = time.perf_counter()
+        try:
+            digest = self.memory_advisor.consult(
+                gene=ctx.gene, drug=ctx.drug, population=ctx.population
+            )
+            payload = digest.to_dict()
+            trace = ctx.ensure_trace()
+            trace.record_step(
+                "memory.consult",
+                origin="system",
+                duration_ms=(time.perf_counter() - t0) * 1000,
+                status="success",
+                **payload,
+            )
+            return payload
+        except Exception as exc:
+            ctx.record_error(f"memory_advisor.consult: {exc}")
+            return None
 
 
 __all__ = ["GeminiOrchestrator", "OrchestrationResult"]
