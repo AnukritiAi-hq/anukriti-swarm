@@ -45,10 +45,20 @@ from core.verification.scoring import (
     classify_score,
     worse_of,
 )
+from core.verification.trace import (
+    EscalationEvent,
+    TraceState,
+    VerificationTrace,
+    make_trace,
+)
 
 __all__ = [
     "VerificationScore",
     "VerificationTier",
     "classify_score",
     "worse_of",
+    "VerificationTrace",
+    "EscalationEvent",
+    "TraceState",
+    "make_trace",
 ]
