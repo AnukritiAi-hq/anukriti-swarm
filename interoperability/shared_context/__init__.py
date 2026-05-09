@@ -33,6 +33,12 @@ from interoperability.shared_context.biomedical import (
     VerificationEdge,
     VerificationNode,
 )
+from interoperability.shared_context.protocol import (
+    ContextDelta,
+    DeltaKind,
+    ScopeFirewallError,
+    SwarmContextProtocol,
+)
 
 __all__: list[str] = [
     "AgentContextEnvelope",
@@ -47,4 +53,8 @@ __all__: list[str] = [
     "PhenotypeState",
     "DrugContext",
     "AlleleFrequency",
+    "SwarmContextProtocol",
+    "ContextDelta",
+    "DeltaKind",
+    "ScopeFirewallError",
 ]
