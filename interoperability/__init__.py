@@ -73,6 +73,15 @@ from interoperability.mcp_protocol import (
     ProvenancePropagationLayer,
     VerificationStatePropagator,
 )
+from interoperability.a2a import (
+    CollaborationResult,
+    DelegationResult,
+    collaborate,
+    delegate_to_specialist,
+    escalate_to_safety,
+    sync_evidence,
+    verify_handoff,
+)
 from interoperability.shared_context import (
     AgentContextEnvelope,
     AlleleFrequency,
