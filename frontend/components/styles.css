@@ -184,3 +184,97 @@ body {
   border-color: var(--accent-red);
   color: var(--accent-red);
 }
+
+/* Safe Abstention banner (phase 5) — pinned when synthesis is blocked */
+.abstention-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(245, 158, 11, 0.06));
+  border: 1px solid var(--accent-red);
+  border-left: 4px solid var(--accent-red);
+  border-radius: var(--radius);
+  animation: abstention-pulse 0.4s ease;
+}
+.abstention-banner.hidden { display: none; }
+.abstention-icon {
+  font-size: 1.75rem;
+  color: var(--accent-red);
+  line-height: 1;
+  padding-top: 0.1rem;
+}
+.abstention-content { flex: 1; }
+.abstention-title {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-red);
+  font-weight: 700;
+}
+.abstention-rule {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-top: 0.25rem;
+}
+.abstention-reason {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  line-height: 1.5;
+}
+@keyframes abstention-pulse {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Evidence-gap analysis view (phase 5) — replaces the narrative prose
+   when synthesis is blocked. Shows missing + uncertain facets with their
+   rule-level rationale, and highlights escalation events. */
+.gap-analysis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.gap-column-title {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.gap-facet-card {
+  padding: 0.6rem 0.75rem;
+  margin: 0.35rem 0;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent-red);
+  border-radius: var(--radius);
+}
+.gap-facet-card.uncertain { border-left-color: var(--accent-yellow); }
+.gap-facet-card .facet-name {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+.gap-facet-card .facet-state {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}
+.escalation-event {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  margin: 0.2rem 0.25rem 0.2rem 0;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--accent-red);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-red);
+  font-weight: 600;
+}

@@ -360,6 +360,7 @@ function renderFinalizeFromReport(report) {
   // Terminal call once the run completes; fills any panels that
   // weren't populated inline and refreshes the full narrative /
   // provenance / orchestration panels with the aggregated report.
+  renderAbstentionMode(report);
   renderSufficiencyPanel(report);
   renderPopulationIntel(report);
   renderKnowledgeGraph(report);
@@ -411,6 +412,9 @@ function renderLiveStart(scope) {
   el.innerHTML = `<div class="trace-line success">● Connecting to swarm runtime...</div>
     <div class="trace-line">  drug=${scope.drug} gene=${scope.gene}
       population=${scope.population} genotype=${scope.genotype}</div>`;
+  // Hide any abstention banner from the previous run.
+  const banner = document.getElementById("abstention-banner");
+  if (banner) banner.classList.add("hidden");
 }
 
 function renderRunError(err) {
@@ -425,6 +429,7 @@ function renderRunError(err) {
 
 function renderFromReport(report, events) {
   renderTraceFromEvents(events || []);
+  renderAbstentionMode(report);
   renderSufficiencyPanel(report);
   renderPopulationIntel(report);
   renderKnowledgeGraph(report);
@@ -1069,6 +1074,135 @@ function renderGovernance(report) {
             `).join("")}
           </div>`
       }
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Safe Abstention UI mode — phase 5 commit 15
+// ---------------------------------------------------------------------------
+
+// Parse the checkpoint's blocking_reason — it's a colon-delimited string
+// produced by SufficiencyCheckpoint._synthesis_gate:
+//     sufficiency:block:R2: phenotype evidence missing...
+//     verdict:uncertain:V7: AFR population support weak
+//     uncertainty:unsafe:U1: hard conflict(s)...
+// Returns {layer, outcome, rule_id, rationale}.
+function parseBlockingReason(reason) {
+  if (!reason) return { layer: "", outcome: "", rule_id: "", rationale: "" };
+  const parts = String(reason).split(":");
+  const layer = parts[0] || "";
+  const outcome = parts[1] || "";
+  const rule_id = (parts[2] || "").trim();
+  const rationale = parts.slice(3).join(":").trim();
+  return { layer, outcome, rule_id, rationale };
+}
+
+function renderAbstentionMode(report) {
+  const banner = document.getElementById("abstention-banner");
+  const rec = report.final_recommendation || {};
+  const allows = !!rec.allows_synthesis;
+
+  if (!banner) return;
+
+  if (allows) {
+    banner.classList.add("hidden");
+    // Restore the narrative panel to its prose form if it was previously
+    // switched to gap-analysis mode. renderNarrativeFromReport handles
+    // this unconditionally (it re-fills the narrative-output div on every
+    // call) so nothing else is needed here.
+    return;
+  }
+
+  // Synthesis blocked — render the pinned top banner with rule-level detail.
+  const parsed = parseBlockingReason(rec.blocking_reason);
+  const ruleEl = document.getElementById("abstention-rule");
+  const reasonEl = document.getElementById("abstention-reason");
+  if (ruleEl) {
+    ruleEl.innerHTML = parsed.rule_id
+      ? `<strong>${parsed.layer}</strong> · <strong>${parsed.outcome}</strong> · rule=<strong>${parsed.rule_id}</strong>`
+      : `<strong>${parsed.layer || "gate"}</strong> · synthesis withheld`;
+  }
+  if (reasonEl) {
+    reasonEl.textContent = parsed.rationale || rec.blocking_reason || "";
+  }
+  banner.classList.remove("hidden");
+
+  // Replace the narrative prose with a gap-analysis view.
+  renderEvidenceGapAnalysis(report, parsed);
+}
+
+// Overrides the narrative-output panel with a structured gap-analysis
+// view: missing facets, uncertain facets, and the escalation events the
+// runtime actually emitted (BLOCK_SYNTHESIS / ABSTAIN / ROUTE_TO_HUMAN_REVIEW
+// / REQUEST_ADDITIONAL_EVIDENCE).
+function renderEvidenceGapAnalysis(report, parsed) {
+  const el = document.getElementById("narrative-output");
+  if (!el) return;
+
+  const ev = report.evidence_sufficiency || {};
+  const trace = ev.trace || {};
+  const missingFacets = (trace.missing_hops || ev.missing_facets || []);
+  // missing_hops is a snapshot of MISSING + UNCERTAIN at decision time;
+  // we split by looking at the coverage facets in evidence_sufficiency
+  // when the backend included them. If not, we render them uniformly.
+  const uncertainFacets = ev.uncertain_facets || [];
+  // Fallback: when trace.missing_hops is present but we don't have
+  // split info, guess by running through both lists.
+  const missingOnly = missingFacets.filter(f => !uncertainFacets.includes(f));
+
+  // Escalation events the trace recorded (closed vocabulary from the
+  // runtime: BLOCK_SYNTHESIS / ABSTAIN / ROUTE_TO_HUMAN_REVIEW /
+  // REQUEST_ADDITIONAL_EVIDENCE / VERDICT_REFUTED).
+  const escalations = trace.escalation_events || [];
+
+  el.innerHTML = `
+    <div class="established" style="border-color:var(--accent-red)">
+      <strong>Evidence Gap Analysis</strong> — synthesis cannot proceed safely.
+    </div>
+    <div class="gap-analysis" style="margin-top:1rem">
+      <div>
+        <div class="gap-column-title">Missing facets</div>
+        ${missingOnly.length === 0
+          ? `<div style="color:var(--text-dim);font-size:0.85rem">— none —</div>`
+          : missingOnly.map(f => `
+            <div class="gap-facet-card">
+              <div class="facet-name">${f}</div>
+              <div class="facet-state">no evidence found</div>
+            </div>
+          `).join("")}
+      </div>
+      <div>
+        <div class="gap-column-title">Uncertain facets</div>
+        ${uncertainFacets.length === 0
+          ? `<div style="color:var(--text-dim);font-size:0.85rem">— none —</div>`
+          : uncertainFacets.map(f => `
+            <div class="gap-facet-card uncertain">
+              <div class="facet-name">${f}</div>
+              <div class="facet-state">evidence thin / ambiguous</div>
+            </div>
+          `).join("")}
+      </div>
+      <div>
+        <div class="gap-column-title">Escalation events</div>
+        ${escalations.length === 0
+          ? `<div style="color:var(--text-dim);font-size:0.85rem">— none recorded —</div>`
+          : `<div>${escalations.map(e =>
+              `<span class="escalation-event">${e}</span>`).join("")}</div>`}
+      </div>
+    </div>
+    <div style="margin-top:1rem;padding:0.75rem;background:var(--bg-secondary);
+         border-radius:var(--radius);font-family:var(--font-mono);font-size:0.8rem;
+         color:var(--text-secondary)">
+      <div><strong style="color:var(--text-primary)">Blocking layer:</strong>
+        ${parsed.layer || "(unknown)"}</div>
+      <div><strong style="color:var(--text-primary)">Outcome:</strong>
+        ${parsed.outcome || "(unknown)"}</div>
+      ${parsed.rule_id ? `<div><strong style="color:var(--text-primary)">Rule:</strong>
+        ${parsed.rule_id}</div>` : ""}
+      <div style="margin-top:0.35rem;color:var(--text-dim)">
+        ${parsed.rationale || "no rationale provided"}
+      </div>
     </div>
   `;
 }
