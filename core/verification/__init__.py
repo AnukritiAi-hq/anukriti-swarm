@@ -52,6 +52,7 @@ from core.verification.trace import (
     make_trace,
 )
 from core.verification.claim_validator import BiomedicalClaimValidator
+from core.verification.grounding import EvidenceGroundingEngine, GroundingReport
 
 __all__ = [
     "VerificationScore",
@@ -63,4 +64,6 @@ __all__ = [
     "TraceState",
     "make_trace",
     "BiomedicalClaimValidator",
+    "EvidenceGroundingEngine",
+    "GroundingReport",
 ]
