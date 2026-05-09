@@ -154,27 +154,14 @@ def _source_name(source: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-# Lexical anchors the analyzer looks for when deciding whether a
-# retrieval result "supports" the target super-population. Closed
-# set — extending it is a code change, same scope discipline as the
-# ClaimEvidenceFacet enum. Lowercase; the matcher lowercases input.
-_POPULATION_MENTIONS: dict[SuperPopulation, tuple[str, ...]] = {
-    SuperPopulation.AFR: ("afr", "african", "sub-saharan"),
-    SuperPopulation.AMR: ("amr", "admixed american", "latino", "hispanic"),
-    SuperPopulation.EAS: ("eas", "east asian", "southeast asian",
-                          "chinese", "japanese", "korean"),
-    SuperPopulation.EUR: ("eur", "european", "caucasian"),
-    SuperPopulation.SAS: ("sas", "south asian", "indian", "pakistani"),
-}
-
-
-def _mentions_population(text: str, population: SuperPopulation) -> bool:
-    """True if ``text`` mentions any canonical anchor for ``population``."""
-
-    if not text:
-        return False
-    lowered = text.lower()
-    return any(anchor in lowered for anchor in _POPULATION_MENTIONS[population])
+# The closed anchor table + matcher live in ``core.models.population_mentions``
+# so the retrieval subpackage can share the exact same vocabulary without
+# reaching into a private analyzer symbol. Aliased here at module scope
+# under the legacy underscore names so any in-tree import still resolves.
+from core.models.population_mentions import (
+    POPULATION_MENTIONS as _POPULATION_MENTIONS,
+    mentions_population as _mentions_population,
+)
 
 
 # ---------------------------------------------------------------------------

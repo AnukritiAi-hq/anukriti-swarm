@@ -8,20 +8,20 @@ diversity-aware selection so a caller can say "retrieve for
 CYP2C19 + clopidogrel + SAS" and get a pharmacogenomically
 relevant evidence set rather than a generic semantic top-k.
 
-Populated in phase 2:
+Public surface (populated through phase 2):
 
-    BiomedicalRetriever            strategy interface; the existing
-                                   ``EvidenceRetriever`` is its first
-                                   concrete implementation
-    PopulationAwareRetriever       re-ranks + biases retrieval by
-                                   super-population (uses core.models
-                                   ``SuperPopulation``)
-    GraphRetriever                 thin adapter around
-                                   ``knowledge_graph.MultiHopReasoner``
-    EvidenceSelector               diversity + dedup over candidate set
-    AdaptiveRetrievalController    loops retrieval until sufficiency
-                                   or budget is reached (works with
-                                   ``retrieval.stopping``)
+    BiomedicalQuery               frozen pharmacogenomic query
+                                  (commit 6)
+    RetrievalStrategyResult       frozen result wrapper carrying
+                                  strategy + priorities (commit 6)
+    BiomedicalRetriever           strategy ABC (commit 6)
+    DenseSemanticRetriever        wraps existing EvidenceRetriever
+                                  (commit 6)
+    PopulationAwareRetriever      re-ranks by population alignment
+                                  (commit 6)
+    GraphRetriever                thin KG adapter (commit 7)
+    EvidenceSelector              diversity + dedup (commit 7)
+    AdaptiveRetrievalController   sufficiency-aware loop (commit 8)
 
 Scope-wise this subpackage is still pharmacogenomic-only. The
 retrievers refuse queries that are not keyed on (gene, drug,
@@ -30,4 +30,18 @@ population, genotype) tuples.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from retrieval.multi_strategy.biomedical_retriever import (
+    BiomedicalQuery,
+    BiomedicalRetriever,
+    DenseSemanticRetriever,
+    PopulationAwareRetriever,
+    RetrievalStrategyResult,
+)
+
+__all__ = [
+    "BiomedicalQuery",
+    "BiomedicalRetriever",
+    "DenseSemanticRetriever",
+    "PopulationAwareRetriever",
+    "RetrievalStrategyResult",
+]
