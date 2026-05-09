@@ -102,7 +102,7 @@ body {
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
 
 /* Trace */
-.trace-container { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.8; }
+.trace-container { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.8; max-height: 400px; overflow-y: auto; }
 .trace-line { padding: 0.25rem 0; border-left: 2px solid var(--border); padding-left: 1rem; margin-left: 0.5rem; }
 .trace-line.success { border-color: var(--accent-green); }
 .trace-line.warning { border-color: var(--accent-yellow); }

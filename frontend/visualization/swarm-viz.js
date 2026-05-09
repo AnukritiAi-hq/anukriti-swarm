@@ -172,13 +172,208 @@ async function runAnalysis() {
     return;
   }
 
-  // Live run (sync for now; commit 12 switches to WebSocket streaming).
   renderLiveStart({ drug, gene, population, genotype });
+  STATE.last_events = [];
+
+  // Prefer WebSocket streaming when available; fall back to sync
+  // fetch on WS failure (e.g. browser blocks WS, proxy strips it).
+  try {
+    await runAnalysisWebSocket({ drug, gene, population, genotype });
+  } catch (wsErr) {
+    console.warn("WS run failed, falling back to POST /api/run:", wsErr);
+    await runAnalysisFetch({ drug, gene, population, genotype });
+  }
+}
+
+// --- WebSocket path (live streaming) ---------------------------------------
+
+function runAnalysisWebSocket(scope) {
+  return new Promise((resolve, reject) => {
+    const wsUrl = BACKEND.replace(/^http/, "ws") + "/ws/run";
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      reject(err);
+      return;
+    }
+
+    let finalized = false;
+    ws.onopen = () => {
+      ws.send(JSON.stringify(scope));
+    };
+    ws.onmessage = (msg) => {
+      let data;
+      try {
+        data = JSON.parse(msg.data);
+      } catch (err) {
+        console.warn("non-JSON WS frame:", msg.data);
+        return;
+      }
+      if (data.type === "event") {
+        handleLiveEvent(data);
+      } else if (data.type === "report") {
+        STATE.last_report = data.report;
+        renderFinalizeFromReport(data.report);
+        finalized = true;
+      } else if (data.type === "error") {
+        renderRunError(`${data.code}: ${data.detail}`);
+        finalized = true;
+      }
+    };
+    ws.onclose = () => {
+      if (finalized) resolve();
+      else reject(new Error("WS closed before report"));
+    };
+    ws.onerror = (err) => {
+      if (!finalized) reject(err);
+    };
+  });
+}
+
+// Incremental event handler — appends to the trace + incrementally
+// refreshes the orchestration + metrics panels so the UI animates.
+function handleLiveEvent(event) {
+  STATE.last_events.push(event);
+  appendTraceLine(event);
+
+  // On specific event kinds, partially populate panels so the user
+  // sees progress before the run completes.
+  switch (event.kind) {
+    case "retrieval_complete":
+      renderInlineRetrieval(event.payload);
+      break;
+    case "graph_traversal":
+      renderInlineGraph(event.payload);
+      break;
+    case "sufficiency_decision":
+      renderInlineSufficiency(event.payload);
+      break;
+    case "verification_checkpoint":
+      renderInlineVerdict(event.payload);
+      break;
+    case "uncertainty_transition":
+      renderInlineUncertainty(event.payload);
+      break;
+  }
+}
+
+function appendTraceLine(event) {
+  const el = document.getElementById("trace-output");
+  if (!el) return;
+  const cls = event.kind === "run_failed" ? "error"
+            : event.kind === "safe_abstention" ? "warning" : "success";
+  const kindLabel = event.kind.replace(/_/g, " ");
+  const detail = formatEventDetail(event);
+  const line = document.createElement("div");
+  line.className = `trace-line ${cls}`;
+  line.innerHTML = `● ${kindLabel}
+    <span style="color:var(--text-dim)">${detail}</span>`;
+  // First event clears the "Connecting..." placeholder.
+  if (el.dataset.firstEventReceived !== "true") {
+    el.innerHTML = "";
+    el.dataset.firstEventReceived = "true";
+  }
+  el.appendChild(line);
+  // Autoscroll to the newest event.
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderInlineRetrieval(payload) {
+  const el = document.getElementById("evidence-output");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="established"><strong>Retrieval in progress:</strong>
+      ${payload.total_retrieved} docs via ${payload.strategy}</div>
+    <div style="margin-top:0.5rem">${(payload.citations || []).map(c =>
+      `<div class="citation" style="margin:0.2rem 0">📄 ${c}</div>`).join("")}</div>
+  `;
+}
+
+function renderInlineGraph(payload) {
+  const el = document.getElementById("agent-graph");
+  if (!el) return;
+  el.innerHTML = `<pre style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4">
+  KG traversal:
+
+    ${payload.start_id || "(no start)"}
+       ⇣  (${payload.path_count} path${payload.path_count === 1 ? "" : "s"})
+    ${payload.goal_id || "(no goal)"}
+  </pre>`;
+}
+
+function renderInlineSufficiency(payload) {
+  const el = document.getElementById("population-output");
+  if (!el) return;
+  const coverage = Math.round((payload.coverage_ratio || 0) * 100);
+  el.innerHTML = `
+    <div class="metric-card"><div class="metric-value">${payload.decision}</div>
+      <div class="metric-label">Sufficiency Decision</div></div>
+    <div class="metric-card"><div class="metric-value">${coverage}%</div>
+      <div class="metric-label">Coverage</div></div>
+    <div class="metric-card"><div class="metric-value">${(payload.missing_facets || []).length}</div>
+      <div class="metric-label">Missing Facets</div></div>
+    <div class="metric-card"><div class="metric-value">${(payload.uncertain_facets || []).length}</div>
+      <div class="metric-label">Uncertain Facets</div></div>
+  `;
+}
+
+function renderInlineVerdict(payload) {
+  const el = document.getElementById("verification-output");
+  if (!el) return;
+  const color = payload.verdict === "supported" ? "var(--accent-green)"
+              : payload.verdict === "uncertain" ? "var(--accent-yellow)"
+              : "var(--accent-red)";
+  el.innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-value" style="color:${color}">${payload.verdict}</div>
+        <div class="metric-label">Verdict (${payload.rule_id})</div></div>
+      <div class="metric-card">
+        <div class="metric-value">${payload.pathway_count || 0}</div>
+        <div class="metric-label">KG Paths</div></div>
+    </div>
+    <div style="margin-top:0.75rem;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dim)">
+      ${payload.rationale || ""}
+    </div>
+  `;
+}
+
+function renderInlineUncertainty(payload) {
+  const el = document.getElementById("confidence-output");
+  if (!el) return;
+  const score = payload.score;
+  const confidence = { low: 0.95, moderate: 0.7, high: 0.4, unsafe: 0.1 }[score] || 0.5;
+  const cls = confidence >= 0.85 ? "high" : confidence >= 0.6 ? "moderate" : "low";
+  el.innerHTML = `
+    <div class="conf-bar"><span class="conf-label">Uncertainty</span>
+      <div class="conf-track"><div class="conf-fill ${cls}"
+        style="width:${Math.min(100, confidence * 100)}%"></div></div>
+      <span class="conf-value">${score}</span></div>
+    <div style="margin-top:0.5rem;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dim)">
+      action: ${payload.action} · ${payload.rationale || ""}
+    </div>
+  `;
+}
+
+function renderFinalizeFromReport(report) {
+  // Terminal call once the run completes; fills any panels that
+  // weren't populated inline and refreshes the full narrative /
+  // provenance / orchestration panels with the aggregated report.
+  renderOrchestrationFromReport(report);
+  renderPharmacogeneFromReport(report);
+  renderNarrativeFromReport(report);
+  renderProvenanceFromReport(report);
+}
+
+// --- Fetch fallback (sync) -------------------------------------------------
+
+async function runAnalysisFetch(scope) {
   try {
     const r = await fetch(`${BACKEND}/api/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ drug, gene, population, genotype }),
+      body: JSON.stringify(scope),
     });
     if (!r.ok) throw new Error(`backend returned ${r.status}: ${await r.text()}`);
     const body = await r.json();
@@ -206,6 +401,7 @@ function revealSections() {
 function renderLiveStart(scope) {
   const el = document.getElementById("trace-output");
   if (!el) return;
+  el.dataset.firstEventReceived = "false";
   el.innerHTML = `<div class="trace-line success">● Connecting to swarm runtime...</div>
     <div class="trace-line">  drug=${scope.drug} gene=${scope.gene}
       population=${scope.population} genotype=${scope.genotype}</div>`;
