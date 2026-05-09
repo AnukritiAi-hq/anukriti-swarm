@@ -110,6 +110,13 @@ from core.evidence_sufficiency.sufficiency import (
     SufficiencyDecisionEngine,
     SufficiencyReport,
 )
+from core.evidence_sufficiency.uncertainty import (
+    UncertaintyAction,
+    UncertaintyAwareReasoningLayer,
+    UncertaintyReading,
+    UncertaintyScore,
+    UncertaintyScoringEngine,
+)
 from core.evidence_sufficiency.verifier import (
     EvidenceVerdict,
     EvidenceVerificationResult,
@@ -143,4 +150,10 @@ __all__ = [
     "EvidenceVerdict",
     "EvidenceVerificationResult",
     "SetLevelEvidenceVerifier",
+    # uncertainty
+    "UncertaintyAction",
+    "UncertaintyAwareReasoningLayer",
+    "UncertaintyReading",
+    "UncertaintyScore",
+    "UncertaintyScoringEngine",
 ]
