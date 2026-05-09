@@ -8,7 +8,7 @@ diversity-aware selection so a caller can say "retrieve for
 CYP2C19 + clopidogrel + SAS" and get a pharmacogenomically
 relevant evidence set rather than a generic semantic top-k.
 
-Public surface (populated through phase 2):
+Public surface (phase 2 complete after commit 8):
 
     BiomedicalQuery               frozen pharmacogenomic query
                                   (commit 6)
@@ -25,7 +25,15 @@ Public surface (populated through phase 2):
     EvidenceSelector              deterministic diversity + dedup
                                   merger across strategy outputs
                                   (commit 7)
-    AdaptiveRetrievalController   sufficiency-aware loop (commit 8)
+    AdaptiveRetrievalController   sufficiency-aware budgeted loop
+                                  (commit 8)
+    AdaptiveRetrievalOutcome      frozen final-outcome record
+                                  (commit 8)
+
+Companion subpackage:
+
+    retrieval.stopping            StopSignal + RetrievalStoppingController
+                                  (commit 8)
 
 Scope-wise this subpackage is still pharmacogenomic-only. The
 retrievers refuse queries that are not keyed on (gene, drug,
@@ -34,6 +42,10 @@ population, genotype) tuples.
 
 from __future__ import annotations
 
+from retrieval.multi_strategy.adaptive_controller import (
+    AdaptiveRetrievalController,
+    AdaptiveRetrievalOutcome,
+)
 from retrieval.multi_strategy.biomedical_retriever import (
     BiomedicalQuery,
     BiomedicalRetriever,
@@ -47,6 +59,8 @@ from retrieval.multi_strategy.graph_and_selector import (
 )
 
 __all__ = [
+    "AdaptiveRetrievalController",
+    "AdaptiveRetrievalOutcome",
     "BiomedicalQuery",
     "BiomedicalRetriever",
     "DenseSemanticRetriever",
