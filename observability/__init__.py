@@ -67,6 +67,7 @@ from observability.graph import (
     SwarmExecutionGraph,
     WorkflowGraphBuilder,
 )
+from observability.visualizer import TraceVisualizer, VisualBundle
 
 __all__: list[str] = [
     # Tracer
@@ -88,4 +89,7 @@ __all__: list[str] = [
     "GraphEdge",
     "NodeKind",
     "EdgeKind",
+    # Visualizer
+    "TraceVisualizer",
+    "VisualBundle",
 ]
