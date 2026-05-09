@@ -54,6 +54,7 @@ from core.runtime.events import (
     RuntimeEventKind,
 )
 from core.runtime.report import UnifiedExecutionReport
+from core.runtime.runtime import SwarmRuntime
 
 __all__ = [
     "UnifiedExecutionContext",
@@ -62,4 +63,5 @@ __all__ = [
     "InMemoryEventStream",
     "RuntimeEvent",
     "RuntimeEventKind",
+    "SwarmRuntime",
 ]
