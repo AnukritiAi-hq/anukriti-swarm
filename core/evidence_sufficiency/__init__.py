@@ -110,6 +110,10 @@ from core.evidence_sufficiency.sufficiency import (
     SufficiencyDecisionEngine,
     SufficiencyReport,
 )
+from core.evidence_sufficiency.trace import (
+    EvidenceSufficiencyTrace,
+    RetrievalRoundRecord,
+)
 from core.evidence_sufficiency.uncertainty import (
     BiasFinding,
     BiasKind,
@@ -162,4 +166,7 @@ __all__ = [
     "UncertaintyReading",
     "UncertaintyScore",
     "UncertaintyScoringEngine",
+    # trace
+    "EvidenceSufficiencyTrace",
+    "RetrievalRoundRecord",
 ]
