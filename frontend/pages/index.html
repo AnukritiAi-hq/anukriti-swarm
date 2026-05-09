@@ -27,6 +27,22 @@
             </div>
         </section>
 
+        <!-- Cinematic Stage Cards (session #7 cinematic pass) -->
+        <!-- Shows each lifecycle stage as its event arrives. Each card
+             has a 'working' state until the corresponding RuntimeEvent
+             is received, then a 'done' state with real output metrics. -->
+        <section class="card hidden" id="stage-cards-section">
+            <h2>Lifecycle</h2>
+            <div class="stage-cards-container" id="stage-cards"></div>
+            <div class="cinematic-toggle">
+                <label>
+                    <input type="checkbox" id="cinematic-toggle" checked>
+                    <span>Cinematic pacing</span>
+                    <span class="cinematic-note">(~300ms/stage for visible reveal; toggle off for raw-speed mode)</span>
+                </label>
+            </div>
+        </section>
+
         <!-- Query Input Section -->
         <section class="card" id="query-section">
             <h2>Genomic Query</h2>

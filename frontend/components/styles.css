@@ -406,3 +406,123 @@ body {
   color: var(--accent-red);
   font-weight: 600;
 }
+
+/* Cinematic lifecycle stage cards (session #7 cinematic pass) */
+.stage-cards-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 900px) {
+  .stage-cards-container { grid-template-columns: 1fr; }
+}
+
+.stage-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.3s;
+  min-height: 130px;
+}
+
+.stage-card[data-state="pending"] {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.stage-card[data-state="working"] {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.3),
+              0 0 18px rgba(6, 182, 212, 0.15);
+  animation: stage-working-pulse 1.2s ease-in-out infinite;
+}
+
+.stage-card[data-state="done"] {
+  border-color: var(--accent-green);
+  border-left: 3px solid var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.stage-card[data-state="abstained"] {
+  border-color: var(--accent-red);
+  border-left: 3px solid var(--accent-red);
+}
+
+@keyframes stage-working-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.3),
+                         0 0 18px rgba(6, 182, 212, 0.15); }
+  50%      { box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.5),
+                         0 0 28px rgba(6, 182, 212, 0.35); }
+}
+
+.stage-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.stage-card-index {
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.stage-card-title {
+  color: var(--accent-cyan);
+  font-weight: 600;
+  flex: 1;
+}
+.stage-card-icon {
+  font-size: 1rem;
+}
+.stage-card[data-state="working"] .stage-card-icon {
+  animation: stage-icon-spin 1.4s linear infinite;
+}
+@keyframes stage-icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+.stage-card-description {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.stage-card-output {
+  margin-top: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+  min-height: 1.1rem;
+}
+.stage-card-output .metric {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.cinematic-toggle {
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.cinematic-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.cinematic-toggle input[type="checkbox"] {
+  accent-color: var(--accent-cyan);
+}
+.cinematic-note {
+  color: var(--text-dim);
+  opacity: 0.7;
+}

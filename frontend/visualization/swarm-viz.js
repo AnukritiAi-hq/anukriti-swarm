@@ -199,6 +199,7 @@ function runAnalysisWebSocket(scope) {
     }
 
     let finalized = false;
+    let finalReport = null;
     ws.onopen = () => {
       ws.send(JSON.stringify(scope));
     };
@@ -214,14 +215,23 @@ function runAnalysisWebSocket(scope) {
         handleLiveEvent(data);
       } else if (data.type === "report") {
         STATE.last_report = data.report;
-        renderFinalizeFromReport(data.report);
+        finalReport = data.report;
         finalized = true;
+        // Defer the finalize render until after the event queue drains
+        // so cinematic pacing stays consistent.
       } else if (data.type === "error") {
         renderRunError(`${data.code}: ${data.detail}`);
         finalized = true;
       }
     };
-    ws.onclose = () => {
+    ws.onclose = async () => {
+      // Wait for the cinematic-paced event queue to drain before
+      // rendering the terminal report, so the finalize render doesn't
+      // race ahead of the stage-card progression.
+      while (EVENT_DRAIN_ACTIVE || EVENT_QUEUE.length > 0) {
+        await sleep(80);
+      }
+      if (finalReport) renderFinalizeFromReport(finalReport);
       if (finalized) resolve();
       else reject(new Error("WS closed before report"));
     };
@@ -231,30 +241,44 @@ function runAnalysisWebSocket(scope) {
   });
 }
 
-// Incremental event handler — appends to the trace + incrementally
-// refreshes the orchestration + metrics panels so the UI animates.
+// Incremental event handler — buffers events into a queue and drains
+// with a cinematic delay so the browser can paint per-event progress
+// even when the backend fires all events within one animation frame.
+let EVENT_QUEUE = [];
+let EVENT_DRAIN_ACTIVE = false;
+
 function handleLiveEvent(event) {
   STATE.last_events.push(event);
-  appendTraceLine(event);
+  EVENT_QUEUE.push(event);
+  if (!EVENT_DRAIN_ACTIVE) {
+    EVENT_DRAIN_ACTIVE = true;
+    drainEventQueue();  // fire-and-forget
+  }
+}
 
-  // On specific event kinds, partially populate panels so the user
-  // sees progress before the run completes.
+async function drainEventQueue() {
+  try {
+    while (EVENT_QUEUE.length > 0) {
+      const event = EVENT_QUEUE.shift();
+      renderSingleEvent(event);
+      if (EVENT_QUEUE.length > 0 || cinematicEnabled()) {
+        await sleep(cinematicDelay());
+      }
+    }
+  } finally {
+    EVENT_DRAIN_ACTIVE = false;
+  }
+}
+
+function renderSingleEvent(event) {
+  appendTraceLine(event);
+  applyEventToStages(event);
   switch (event.kind) {
-    case "retrieval_complete":
-      renderInlineRetrieval(event.payload);
-      break;
-    case "graph_traversal":
-      renderInlineGraph(event.payload);
-      break;
-    case "sufficiency_decision":
-      renderInlineSufficiency(event.payload);
-      break;
-    case "verification_checkpoint":
-      renderInlineVerdict(event.payload);
-      break;
-    case "uncertainty_transition":
-      renderInlineUncertainty(event.payload);
-      break;
+    case "retrieval_complete":     renderInlineRetrieval(event.payload); break;
+    case "graph_traversal":        renderInlineGraph(event.payload); break;
+    case "sufficiency_decision":   renderInlineSufficiency(event.payload); break;
+    case "verification_checkpoint": renderInlineVerdict(event.payload); break;
+    case "uncertainty_transition": renderInlineUncertainty(event.payload); break;
   }
 }
 
@@ -415,6 +439,8 @@ function renderLiveStart(scope) {
   // Hide any abstention banner from the previous run.
   const banner = document.getElementById("abstention-banner");
   if (banner) banner.classList.add("hidden");
+  // Reset the cinematic stage cards for this new run.
+  resetStageCards();
 }
 
 function renderRunError(err) {
@@ -1274,6 +1300,214 @@ function renderTrioColumn(index, scenario, report) {
       <span>${citations.length} cites</span>
     </div>
   `;
+}
+
+// ---------------------------------------------------------------------------
+// Cinematic lifecycle stage cards (session #7 cinematic pass)
+// ---------------------------------------------------------------------------
+//
+// The SwarmRuntime's 5 stages each have a card in the UI. Cards start
+// 'pending' (dim, dashed border), move to 'working' when the stage's
+// first event arrives (cyan glow + spinning icon), and finalise to
+// 'done' / 'abstained' (green or red left-border) once the stage's
+// terminal event arrives.
+//
+// A cinematic pacing delay (default 300ms/stage) is interposed between
+// incoming events and their render so the progression is VISIBLE even
+// though the underlying runtime finishes in ~5ms. Labeled as
+// presentation pacing in the UI, not disguised as computation.
+
+const STAGES = [
+  {
+    id: "orchestration", title: "Orchestration",
+    icon: "◎",
+    description: "Dispatch specialists for the pharmacogenomic query.",
+    working_events: ["run_started", "agent_activated"],
+    done_events: ["retrieval_complete"],  // next-stage starts = this done
+  },
+  {
+    id: "retrieval", title: "Retrieval",
+    icon: "⚙",
+    description: "Multi-strategy search: dense + population-aware + selector.",
+    working_events: ["retrieval_complete"],
+    done_events: ["graph_traversal"],
+  },
+  {
+    id: "graph", title: "Graph Reasoning",
+    icon: "◈",
+    description: "Bounded BFS over the pharmacogenomic KG; weighted by population.",
+    working_events: ["graph_traversal"],
+    done_events: ["sufficiency_decision"],
+  },
+  {
+    id: "sufficiency", title: "Sufficiency + Verification",
+    icon: "✓",
+    description: "4-layer check: coverage / conflict / verdict / uncertainty / bias.",
+    working_events: ["sufficiency_decision", "verification_checkpoint",
+                     "uncertainty_transition", "provenance_persisted"],
+    done_events: ["synthesis_emitted", "safe_abstention"],
+  },
+  {
+    id: "synthesis", title: "Synthesis",
+    icon: "✎",
+    description: "Generate recommendation OR refuse safely with named rule.",
+    working_events: ["synthesis_emitted", "safe_abstention"],
+    done_events: ["run_completed", "run_failed"],
+  },
+];
+
+function ensureStageCardsContainer() {
+  const container = document.getElementById("stage-cards");
+  if (!container) return null;
+  if (container.childElementCount > 0) return container;
+  container.innerHTML = STAGES.map((s, i) => `
+    <div class="stage-card" data-stage="${s.id}" data-state="pending">
+      <div class="stage-card-header">
+        <span class="stage-card-index">${i + 1}</span>
+        <span class="stage-card-title">${s.title}</span>
+        <span class="stage-card-icon">${s.icon}</span>
+      </div>
+      <div class="stage-card-description">${s.description}</div>
+      <div class="stage-card-output" id="stage-output-${s.id}">—</div>
+    </div>
+  `).join("");
+  return container;
+}
+
+function resetStageCards() {
+  ensureStageCardsContainer();
+  STAGES.forEach(s => {
+    const card = document.querySelector(`.stage-card[data-stage="${s.id}"]`);
+    if (card) card.dataset.state = "pending";
+    const output = document.getElementById(`stage-output-${s.id}`);
+    if (output) output.innerHTML = "—";
+  });
+  // Reveal the section on first use.
+  const section = document.getElementById("stage-cards-section");
+  if (section) section.classList.remove("hidden");
+}
+
+function setStageState(stageId, state) {
+  const card = document.querySelector(`.stage-card[data-stage="${stageId}"]`);
+  if (!card) return;
+  card.dataset.state = state;
+}
+
+function setStageOutput(stageId, html) {
+  const el = document.getElementById(`stage-output-${stageId}`);
+  if (el) el.innerHTML = html;
+}
+
+// Given a RuntimeEvent, advance stage states accordingly.
+function applyEventToStages(event) {
+  const kind = event.kind;
+  const p = event.payload || {};
+
+  // Find the stage this event belongs to (or that should be 'done' on
+  // this event). Multiple stages can react to the same event kind —
+  // e.g. 'retrieval_complete' starts the retrieval working state AND
+  // finishes the orchestration stage.
+  for (const stage of STAGES) {
+    if (stage.working_events.includes(kind)) {
+      setStageState(stage.id, "working");
+    }
+  }
+  for (const stage of STAGES) {
+    if (stage.done_events.includes(kind)) {
+      // Only transition pending/working -> done; don't overwrite abstained.
+      const card = document.querySelector(`.stage-card[data-stage="${stage.id}"]`);
+      if (card && card.dataset.state !== "abstained") {
+        setStageState(stage.id, "done");
+      }
+    }
+  }
+
+  // Per-stage output lines — concise metrics from the event payload.
+  switch (kind) {
+    case "run_started":
+      setStageState("orchestration", "working");
+      setStageOutput("orchestration",
+        `<span class="metric">${p.drug}</span> + `
+        + `<span class="metric">${p.gene}</span> + `
+        + `<span class="metric">${p.population}</span>`);
+      break;
+    case "agent_activated":
+      if (p.agent === "orchestrator") {
+        setStageOutput("orchestration",
+          `dispatched <span class="metric">${p.agent}</span>`);
+      }
+      break;
+    case "retrieval_complete":
+      setStageState("orchestration", "done");
+      setStageOutput("retrieval",
+        `<span class="metric">${p.total_retrieved}</span> docs · `
+        + `strategy=${p.strategy}`);
+      break;
+    case "graph_traversal":
+      setStageState("retrieval", "done");
+      setStageOutput("graph",
+        `<span class="metric">${p.path_count}</span> paths`);
+      break;
+    case "sufficiency_decision": {
+      setStageState("graph", "done");
+      const coverage = Math.round((p.coverage_ratio || 0) * 100);
+      setStageOutput("sufficiency",
+        `decision=<span class="metric">${p.decision}</span> · `
+        + `coverage ${coverage}%`);
+      break;
+    }
+    case "verification_checkpoint":
+      setStageOutput("sufficiency",
+        `verdict=<span class="metric">${p.verdict}</span> (${p.rule_id})`);
+      break;
+    case "uncertainty_transition":
+      setStageOutput("sufficiency",
+        `uncertainty=<span class="metric">${p.score}</span> · `
+        + `action=${p.action}`);
+      break;
+    case "synthesis_emitted":
+      setStageState("sufficiency", "done");
+      setStageState("synthesis", "working");
+      setStageOutput("synthesis",
+        `✓ <span class="metric">${(p.audiences || []).length}</span> audiences`);
+      break;
+    case "safe_abstention":
+      setStageState("sufficiency", "abstained");
+      setStageState("synthesis", "abstained");
+      setStageOutput("synthesis",
+        `✗ refused · decision=<span class="metric">${p.decision}</span>`);
+      break;
+    case "run_completed":
+      setStageState("synthesis",
+        document.querySelector(`.stage-card[data-stage="synthesis"]`).dataset.state === "abstained"
+          ? "abstained" : "done");
+      break;
+    case "run_failed":
+      setStageState("synthesis", "abstained");
+      setStageOutput("synthesis", `✗ failed: ${p.error || ""}`);
+      break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cinematic pacing — artificial delay between events so the browser
+// can paint progressive reveal even when the backend completes in 5ms.
+// Toggleable in the UI.
+// ---------------------------------------------------------------------------
+
+const CINEMATIC_DELAY_MS = 320;
+
+function cinematicEnabled() {
+  const el = document.getElementById("cinematic-toggle");
+  return !el || el.checked;
+}
+
+function cinematicDelay() {
+  return cinematicEnabled() ? CINEMATIC_DELAY_MS : 0;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
