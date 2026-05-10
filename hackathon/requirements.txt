@@ -1,0 +1,20 @@
+# Hackathon-local dependencies
+# Install: pip install -r hackathon/requirements.txt
+#
+# These are additive on top of the root requirements.txt. They are NOT
+# required to run the main Anukriti Swarm — only the hackathon MCP
+# Superpower path.
+
+# FastMCP — Prompt Opinion reference stack runs on 3.2.4+
+# The `po-fastmcp` sample repo declares `fastmcp[apps]>=3.2.4`. We skip
+# the [apps] extra because we don't need prefab_ui (our Superpower is
+# tool-only, no in-chat UI).
+fastmcp>=3.2.4
+
+# Typed FHIR R4 resources. Used by fhir/input.py and fhir/output.py.
+# Pinned to match the `po-fastmcp` sample.
+fhir.resources>=8.2.0
+
+# Async HTTP client — the FhirClient wrapper uses httpx for FHIR calls
+# and for round-tripping our DetectedIssue/Provenance back to the server.
+httpx>=0.28.1

@@ -33,3 +33,16 @@ mypy==1.10.0
 # layer and new versions may contain CPIC table updates that require
 # regression review in Swarm before adoption. Bump this pin deliberately.
 anukriti-pgx-core==0.2.1
+
+# -----------------------------------------------------------------------------
+# Optional: Agents Assemble hackathon (Prompt Opinion MCP Superpower)
+# -----------------------------------------------------------------------------
+# Only required if you are running the hackathon/ MCP server. These deps
+# are not imported anywhere in the main swarm (agents/, core/, retrieval/,
+# verification/, etc.). See hackathon/README.md for details.
+#
+# To install: pip install -r hackathon/requirements.txt
+#
+# fastmcp>=3.2.4           # Prompt Opinion reference MCP stack
+# fhir.resources>=8.2.0    # Typed FHIR R4 resources
+# httpx>=0.28.1            # Async HTTP for FhirClient
