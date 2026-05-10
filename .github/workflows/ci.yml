@@ -129,6 +129,12 @@ jobs:
       - name: ruff format --check core/runtime/
         run: ruff format --check core/runtime/
 
+      - name: ruff check core/evidence_sufficiency/
+        run: ruff check core/evidence_sufficiency/
+
+      - name: ruff format --check core/evidence_sufficiency/
+        run: ruff format --check core/evidence_sufficiency/
+
       # ------- INFORMATIONAL: rest of the codebase -------
       #
       # These steps print the current debt counts but do not fail
