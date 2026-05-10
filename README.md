@@ -8,6 +8,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green)]()
 [![Agents: 9](https://img.shields.io/badge/agents-9%20specialists-purple)]()
+[![CI](https://github.com/AnukritiAi-hq/anukriti-swarm/actions/workflows/ci.yml/badge.svg)](https://github.com/AnukritiAi-hq/anukriti-swarm/actions/workflows/ci.yml)
+[![Tests: 234](https://img.shields.io/badge/tests-234%20passing-brightgreen)]()
 
 ---
 
