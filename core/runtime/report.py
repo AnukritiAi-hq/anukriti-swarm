@@ -39,10 +39,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
-from core.runtime.context import UnifiedExecutionContext
+if TYPE_CHECKING:
+    from core.runtime.context import UnifiedExecutionContext
 
 
 @dataclass(frozen=True)
@@ -101,9 +102,7 @@ class UnifiedExecutionReport:
     errors: tuple[str, ...] = ()
 
     report_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
-    generated_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -115,7 +114,7 @@ class UnifiedExecutionReport:
         ctx: UnifiedExecutionContext,
         *,
         total_duration_ms: float = 0.0,
-    ) -> "UnifiedExecutionReport":
+    ) -> UnifiedExecutionReport:
         """Snapshot a context into a frozen report.
 
         Extracts:

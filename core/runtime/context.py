@@ -50,7 +50,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core.models.population import SuperPopulation
@@ -68,12 +68,8 @@ class UnifiedExecutionContext:
     question: str = ""
 
     # ----- Identity + timing -----
-    correlation_id: str = field(
-        default_factory=lambda: f"unified_{uuid.uuid4().hex[:12]}"
-    )
-    started_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    correlation_id: str = field(default_factory=lambda: f"unified_{uuid.uuid4().hex[:12]}")
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # ----- State slots (filled progressively by runtime stages) -----
     activated_agents: tuple[str, ...] = ()
@@ -105,7 +101,7 @@ class UnifiedExecutionContext:
         genotype: str = "unknown",
         question: str = "",
         correlation_id: str = "",
-    ) -> "UnifiedExecutionContext":
+    ) -> UnifiedExecutionContext:
         """Validate + coerce inputs and construct a context."""
 
         if not drug or not str(drug).strip():
@@ -146,7 +142,7 @@ class UnifiedExecutionContext:
             return
         if name in self.activated_agents:
             return
-        self.activated_agents = self.activated_agents + (name,)
+        self.activated_agents = (*self.activated_agents, name)
 
     def record_error(self, error: str) -> None:
         """Record a non-fatal error. Append-only; no dedup."""
@@ -154,7 +150,7 @@ class UnifiedExecutionContext:
         text = str(error).strip()
         if not text:
             return
-        self.errors = self.errors + (text,)
+        self.errors = (*self.errors, text)
 
     # ------------------------------------------------------------------
     # Snapshot for serialization

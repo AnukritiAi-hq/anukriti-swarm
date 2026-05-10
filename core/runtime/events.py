@@ -51,11 +51,15 @@ a client's connection as they arrive.
 from __future__ import annotations
 
 import abc
+import contextlib
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Iterator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 class RuntimeEventKind(str, Enum):
@@ -96,9 +100,7 @@ class RuntimeEvent:
     correlation_id: str
     payload: dict[str, Any] = field(default_factory=dict)
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -158,11 +160,10 @@ class InMemoryEventStream(EventStream):
             return
         self.events.append(event)
         for subscriber in list(self.subscribers):
-            try:
+            # Broken subscribers cannot break the runtime — silently
+            # drop any exception they raise. pragma: no cover — defensive.
+            with contextlib.suppress(Exception):
                 subscriber(event)
-            except Exception:  # pragma: no cover — defensive
-                # Broken subscribers cannot break the runtime.
-                pass
 
     def close(self) -> None:
         self._closed = True

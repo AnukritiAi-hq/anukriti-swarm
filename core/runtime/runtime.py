@@ -39,10 +39,16 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from integrations.mcp.provenance import ProvenanceRecord
+from knowledge_graph import (
+    GraphContextBuilder,
+    MultiHopReasoner,
+    PopulationGraphIndexer,
+)
 
 from core.evidence_sufficiency import SufficiencyCheckpoint
-from core.runtime.context import UnifiedExecutionContext
 from core.runtime.events import (
     EventStream,
     InMemoryEventStream,
@@ -50,12 +56,6 @@ from core.runtime.events import (
     RuntimeEventKind,
 )
 from core.runtime.report import UnifiedExecutionReport
-from integrations.mcp.provenance import ProvenanceRecord
-from knowledge_graph import (
-    GraphContextBuilder,
-    MultiHopReasoner,
-    PopulationGraphIndexer,
-)
 from retrieval.evidence.documents import (
     CPIC_DOCUMENTS,
     PHARMGKB_DOCUMENTS,
@@ -68,6 +68,8 @@ from retrieval.multi_strategy import (
     PopulationAwareRetriever,
 )
 
+if TYPE_CHECKING:
+    from core.runtime.context import UnifiedExecutionContext
 
 _ALL_DOCS = CPIC_DOCUMENTS + PHARMGKB_DOCUMENTS + PUBMED_DOCUMENTS
 
@@ -111,11 +113,16 @@ class SwarmRuntime:
 
         self._ensure_components()
         t0 = time.perf_counter()
-        self._emit(RuntimeEventKind.RUN_STARTED, ctx, payload={
-            "drug": ctx.drug, "gene": ctx.gene,
-            "population": ctx.population.value,
-            "genotype": ctx.genotype,
-        })
+        self._emit(
+            RuntimeEventKind.RUN_STARTED,
+            ctx,
+            payload={
+                "drug": ctx.drug,
+                "gene": ctx.gene,
+                "population": ctx.population.value,
+                "genotype": ctx.genotype,
+            },
+        )
 
         try:
             self._stage_orchestration(ctx)
@@ -125,22 +132,26 @@ class SwarmRuntime:
             self._stage_synthesis(ctx)
         except Exception as exc:  # pragma: no cover — defensive
             ctx.record_error(f"fatal: {exc!r}")
-            self._emit(RuntimeEventKind.RUN_FAILED, ctx, payload={
-                "error": repr(exc),
-            })
-            duration_ms = (time.perf_counter() - t0) * 1000
-            return UnifiedExecutionReport.from_context(
-                ctx, total_duration_ms=duration_ms
+            self._emit(
+                RuntimeEventKind.RUN_FAILED,
+                ctx,
+                payload={
+                    "error": repr(exc),
+                },
             )
+            duration_ms = (time.perf_counter() - t0) * 1000
+            return UnifiedExecutionReport.from_context(ctx, total_duration_ms=duration_ms)
 
         duration_ms = (time.perf_counter() - t0) * 1000
-        self._emit(RuntimeEventKind.RUN_COMPLETED, ctx, payload={
-            "duration_ms": round(duration_ms, 3),
-            "activated_agents": list(ctx.activated_agents),
-        })
-        return UnifiedExecutionReport.from_context(
-            ctx, total_duration_ms=duration_ms
+        self._emit(
+            RuntimeEventKind.RUN_COMPLETED,
+            ctx,
+            payload={
+                "duration_ms": round(duration_ms, 3),
+                "activated_agents": list(ctx.activated_agents),
+            },
         )
+        return UnifiedExecutionReport.from_context(ctx, total_duration_ms=duration_ms)
 
     # ------------------------------------------------------------------
     # Shared component assembly
@@ -171,11 +182,13 @@ class SwarmRuntime:
     ) -> None:
         """Create a RuntimeEvent and push it through the stream."""
 
-        self.event_stream.emit(RuntimeEvent(
-            kind=kind,
-            correlation_id=ctx.correlation_id,
-            payload=dict(payload or {}),
-        ))
+        self.event_stream.emit(
+            RuntimeEvent(
+                kind=kind,
+                correlation_id=ctx.correlation_id,
+                payload=dict(payload or {}),
+            )
+        )
 
     def _record_agent(self, ctx: UnifiedExecutionContext, name: str) -> None:
         """Record + emit AGENT_ACTIVATED for every new specialist."""
@@ -183,9 +196,13 @@ class SwarmRuntime:
         already = name in ctx.activated_agents
         ctx.record_agent(name)
         if not already:
-            self._emit(RuntimeEventKind.AGENT_ACTIVATED, ctx, payload={
-                "agent": name,
-            })
+            self._emit(
+                RuntimeEventKind.AGENT_ACTIVATED,
+                ctx,
+                payload={
+                    "agent": name,
+                },
+            )
 
     # ------------------------------------------------------------------
     # Stage 1: orchestration
@@ -195,10 +212,8 @@ class SwarmRuntime:
         self._record_agent(ctx, "orchestrator")
         ctx.orchestration_trace = {
             "steps": [
-                {"name": "intake",
-                 "detail": f"Validated {ctx.gene} {ctx.genotype}"},
-                {"name": "dispatch",
-                 "detail": f"Dispatched to {ctx.population.value} specialists"},
+                {"name": "intake", "detail": f"Validated {ctx.gene} {ctx.genotype}"},
+                {"name": "dispatch", "detail": f"Dispatched to {ctx.population.value} specialists"},
             ],
         }
 
@@ -206,13 +221,13 @@ class SwarmRuntime:
     # Stage 2: retrieval
     # ------------------------------------------------------------------
 
-    def _stage_retrieval(
-        self, ctx: UnifiedExecutionContext
-    ) -> dict[str, Any]:
+    def _stage_retrieval(self, ctx: UnifiedExecutionContext) -> dict[str, Any]:
         self._record_agent(ctx, "population_aware_retriever")
         query = BiomedicalQuery.new(
-            gene=ctx.gene, drug=ctx.drug,
-            population=ctx.population, genotype=ctx.genotype,
+            gene=ctx.gene,
+            drug=ctx.drug,
+            population=ctx.population,
+            genotype=ctx.genotype,
         )
         pop_result = self._retriever.retrieve(query)
         dense_result = self._dense_retriever.retrieve(query)
@@ -224,20 +239,22 @@ class SwarmRuntime:
             "total_retrieved": merged.total_retrieved,
             "strategy": merged.strategy,
         }
-        self._emit(RuntimeEventKind.RETRIEVAL_COMPLETE, ctx, payload={
-            "citations": citations,
-            "total_retrieved": merged.total_retrieved,
-            "strategy": merged.strategy,
-        })
+        self._emit(
+            RuntimeEventKind.RETRIEVAL_COMPLETE,
+            ctx,
+            payload={
+                "citations": citations,
+                "total_retrieved": merged.total_retrieved,
+                "strategy": merged.strategy,
+            },
+        )
         return {"merged": merged, "citations": citations}
 
     # ------------------------------------------------------------------
     # Stage 3: graph reasoning
     # ------------------------------------------------------------------
 
-    def _stage_graph_reasoning(
-        self, ctx: UnifiedExecutionContext
-    ) -> list:
+    def _stage_graph_reasoning(self, ctx: UnifiedExecutionContext) -> list:
         self._record_agent(ctx, "graph_reasoner")
         allele_guess = f"allele:{ctx.gene}*{ctx.genotype.split('/')[0].lstrip('*')}"
         drug_id = f"drug:{ctx.drug}"
@@ -245,29 +262,37 @@ class SwarmRuntime:
         start_id: str | None = allele_guess if self._graph.has_node(allele_guess) else None
         if start_id is None:
             phen_candidates = [
-                n.id for n in self._graph.nodes()
-                if n.id.startswith(f"phenotype:{ctx.gene}")
+                n.id for n in self._graph.nodes() if n.id.startswith(f"phenotype:{ctx.gene}")
             ]
             start_id = phen_candidates[0] if phen_candidates else None
 
         paths: list = []
         if start_id and self._graph.has_node(drug_id):
-            paths = list(self._reasoner.find_paths(
-                self._graph, start_id, drug_id,
-                target_population=ctx.population, pop_indexer=self._indexer,
-            ))
+            paths = list(
+                self._reasoner.find_paths(
+                    self._graph,
+                    start_id,
+                    drug_id,
+                    target_population=ctx.population,
+                    pop_indexer=self._indexer,
+                )
+            )
 
         ctx.graph_state = {
             "start_id": start_id,
             "goal_id": drug_id,
             "paths": [p.to_dict() for p in paths],
         }
-        self._emit(RuntimeEventKind.GRAPH_TRAVERSAL, ctx, payload={
-            "start_id": start_id,
-            "goal_id": drug_id,
-            "path_count": len(paths),
-            "paths": [p.to_dict() for p in paths],
-        })
+        self._emit(
+            RuntimeEventKind.GRAPH_TRAVERSAL,
+            ctx,
+            payload={
+                "start_id": start_id,
+                "goal_id": drug_id,
+                "path_count": len(paths),
+                "paths": [p.to_dict() for p in paths],
+            },
+        )
         return paths
 
     # ------------------------------------------------------------------
@@ -289,13 +314,16 @@ class SwarmRuntime:
         pharmacogene_result = _phenotype_for(ctx)
         population_result = _pop_result_for(ctx, self._indexer)
         recommendations = _recommendations_for(
-            ctx, pharmacogene_result.get("phenotype", ""),
+            ctx,
+            pharmacogene_result.get("phenotype", ""),
         )
 
         run = {
-            "gene": ctx.gene, "drug": ctx.drug,
+            "gene": ctx.gene,
+            "drug": ctx.drug,
             "population": ctx.population,
-            "allele1": allele1 or "*1", "allele2": allele2 or "*1",
+            "allele1": allele1 or "*1",
+            "allele2": allele2 or "*1",
             "pharmacogene_result": pharmacogene_result,
             "population_result": population_result,
             "recommendations": recommendations,
@@ -335,34 +363,46 @@ class SwarmRuntime:
             self._record_agent(ctx, "population_bias_detector")
 
         # Emit the three sufficiency-related events in order.
-        self._emit(RuntimeEventKind.SUFFICIENCY_DECISION, ctx, payload={
-            "decision": result.report.decision.value,
-            "rationale": result.report.rationale,
-            "coverage_ratio": result.report.coverage.coverage_ratio,
-            "missing_facets": [
-                f.value for f in result.report.coverage.missing_facets
-            ],
-            "uncertain_facets": [
-                f.value for f in result.report.coverage.uncertain_facets
-            ],
-        })
-        self._emit(RuntimeEventKind.VERIFICATION_CHECKPOINT, ctx, payload={
-            "verdict": result.verdict.verdict.value,
-            "rule_id": result.verdict.rule_id,
-            "rationale": result.verdict.rationale,
-            "pathway_complete": result.verdict.pathway_complete,
-            "pathway_count": result.verdict.pathway_count,
-        })
-        self._emit(RuntimeEventKind.UNCERTAINTY_TRANSITION, ctx, payload={
-            "score": result.uncertainty.score.value,
-            "action": result.uncertainty.action.value,
-            "rationale": result.uncertainty.rationale,
-            "bias_findings": [b.to_dict() for b in result.bias_findings],
-        })
-        self._emit(RuntimeEventKind.PROVENANCE_PERSISTED, ctx, payload={
-            "record_count": len(provenance_records),
-            "records": [p.to_dict() for p in provenance_records],
-        })
+        self._emit(
+            RuntimeEventKind.SUFFICIENCY_DECISION,
+            ctx,
+            payload={
+                "decision": result.report.decision.value,
+                "rationale": result.report.rationale,
+                "coverage_ratio": result.report.coverage.coverage_ratio,
+                "missing_facets": [f.value for f in result.report.coverage.missing_facets],
+                "uncertain_facets": [f.value for f in result.report.coverage.uncertain_facets],
+            },
+        )
+        self._emit(
+            RuntimeEventKind.VERIFICATION_CHECKPOINT,
+            ctx,
+            payload={
+                "verdict": result.verdict.verdict.value,
+                "rule_id": result.verdict.rule_id,
+                "rationale": result.verdict.rationale,
+                "pathway_complete": result.verdict.pathway_complete,
+                "pathway_count": result.verdict.pathway_count,
+            },
+        )
+        self._emit(
+            RuntimeEventKind.UNCERTAINTY_TRANSITION,
+            ctx,
+            payload={
+                "score": result.uncertainty.score.value,
+                "action": result.uncertainty.action.value,
+                "rationale": result.uncertainty.rationale,
+                "bias_findings": [b.to_dict() for b in result.bias_findings],
+            },
+        )
+        self._emit(
+            RuntimeEventKind.PROVENANCE_PERSISTED,
+            ctx,
+            payload={
+                "record_count": len(provenance_records),
+                "records": [p.to_dict() for p in provenance_records],
+            },
+        )
 
     # ------------------------------------------------------------------
     # Stage 5: synthesis OR abstention
@@ -373,11 +413,15 @@ class SwarmRuntime:
         allows = bool(checkpoint.get("allows_synthesis"))
 
         if not allows:
-            self._emit(RuntimeEventKind.SAFE_ABSTENTION, ctx, payload={
-                "blocking_reason": checkpoint.get("blocking_reason", ""),
-                "decision": checkpoint.get("sufficiency_decision", "unknown"),
-                "verdict": checkpoint.get("verdict", "unknown"),
-            })
+            self._emit(
+                RuntimeEventKind.SAFE_ABSTENTION,
+                ctx,
+                payload={
+                    "blocking_reason": checkpoint.get("blocking_reason", ""),
+                    "decision": checkpoint.get("sufficiency_decision", "unknown"),
+                    "verdict": checkpoint.get("verdict", "unknown"),
+                },
+            )
             return
 
         self._record_agent(ctx, "narrative_agent")
@@ -386,10 +430,14 @@ class SwarmRuntime:
             "patient": _patient_narrative(ctx, citations),
             "researcher": _researcher_narrative(ctx, citations),
         }
-        self._emit(RuntimeEventKind.SYNTHESIS_EMITTED, ctx, payload={
-            "audiences": list(ctx.narrative_output),
-            "patient_excerpt": ctx.narrative_output.get("patient", "")[:120],
-        })
+        self._emit(
+            RuntimeEventKind.SYNTHESIS_EMITTED,
+            ctx,
+            payload={
+                "audiences": list(ctx.narrative_output),
+                "patient_excerpt": ctx.narrative_output.get("patient", "")[:120],
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +468,7 @@ def _phenotype_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
 
     if gene == "HLA-B":
         from agents.pharmacogene.hla_b import HLABAgent
+
         has_15_02 = "*15:02" in (a1, a2) or "15:02" in a1 or "15:02" in a2
         result = HLABAgent().assess_risk(has_15_02)
         return {
@@ -433,13 +482,18 @@ def _phenotype_for(ctx: UnifiedExecutionContext) -> dict[str, Any]:
 
     # CYP2C19 / CYP2D6 / anything else covered by the activity-score rule.
     from rules.phenotype_rules import infer_phenotype
+
     inference = infer_phenotype(gene, a1 or "*1", a2 or "*1")
     # Translate the rule_version (e.g. 'cpic_activity_score_v1') into the
     # dotted rule_id the coverage analyzer's PHENOTYPE-facet check expects
     # (startswith('cpic.') or 'hla_b.'). The dotted form is the project's
     # canonical rule-id convention; the underscored form is internal to
     # the rule engine.
-    rule_id = "cpic.activity_score" if "cpic" in inference.rule_version.lower() else inference.rule_version
+    rule_id = (
+        "cpic.activity_score"
+        if "cpic" in inference.rule_version.lower()
+        else inference.rule_version
+    )
     return {
         "gene": gene,
         "phenotype": inference.phenotype,
@@ -516,13 +570,15 @@ def _recommendations_for(
     rec = lookup_recommendation(ctx.gene, phenotype, ctx.drug)
     if rec is None:
         return []
-    return [{
-        "recommendation": rec.recommendation,
-        "evidence_refs": [rec.guideline_id, rec.pmid],
-        "strength": rec.strength,
-        "classification": rec.classification,
-        "guideline_version": rec.guideline_version,
-    }]
+    return [
+        {
+            "recommendation": rec.recommendation,
+            "evidence_refs": [rec.guideline_id, rec.pmid],
+            "strength": rec.strength,
+            "classification": rec.classification,
+            "guideline_version": rec.guideline_version,
+        }
+    ]
 
 
 def _build_provenance(
@@ -536,14 +592,16 @@ def _build_provenance(
         generating_agent=f"pharmacogene_{ctx.gene.lower()}",
         rule_id="cpic.activity_score",
         correlation_id=ctx.correlation_id,
-        evidence_sources=[first_ref], origin="deterministic",
+        evidence_sources=[first_ref],
+        origin="deterministic",
     )
     rec = ProvenanceRecord(
         claim=f"{ctx.drug} recommendation",
         generating_agent="narrative",
         rule_id="cpic.recommendation",
         correlation_id=ctx.correlation_id,
-        evidence_sources=two_refs, origin="deterministic",
+        evidence_sources=two_refs,
+        origin="deterministic",
     )
     rec.parent_claim_id = pheno.claim_id
     return [pheno, rec]
