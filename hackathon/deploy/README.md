@@ -45,12 +45,16 @@ On your local side:
 **Region:** whatever is closest to you (us-east-1 default, ap-south-1
 for India).
 
-**AMI:** Amazon Linux 2023 (current).
+**AMI:** Ubuntu 22.04 LTS **or** Amazon Linux 2023. The bootstrap
+script auto-detects and handles both (different package managers).
 
 **Instance type:** `t3.small` (2 vCPU, 2 GiB) — the swarm is CPU-
 bound during KG build (~40ms first call, then reused).
 
-**Storage:** 20 GiB gp3 (default is fine).
+**Storage:** 20 GiB gp3 (comfortable headroom). 30 GiB if you want
+to keep multiple Docker image tags for rollback. Don't go below
+16 GiB; the Docker image + deps take ~5 GiB and you want room for
+logs.
 
 **Security group:** inbound rules
   - 22/tcp from your IP (SSH)
@@ -77,22 +81,30 @@ Note the public IPv4 address that comes back; you will need it.
 
 ## Step 2 — Bootstrap the instance
 
-SSH in and install Docker:
+SSH in and run the all-in-one bootstrap script:
 
 ```bash
+# On Ubuntu:
+ssh -i ~/.ssh/your-key.pem ubuntu@<EC2_PUBLIC_IP>
+
+# On Amazon Linux 2023:
 ssh -i ~/.ssh/your-key.pem ec2-user@<EC2_PUBLIC_IP>
 
-sudo dnf install -y docker git nginx
-sudo systemctl enable --now docker
-sudo usermod -aG docker ec2-user
-newgrp docker   # pick up the group change without logging out
-
-# Install docker compose plugin
-mkdir -p ~/.docker/cli-plugins
-curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-  -o ~/.docker/cli-plugins/docker-compose
-chmod +x ~/.docker/cli-plugins/docker-compose
+# Then on the box:
+git clone --branch hackathon/agents-assemble-2026 \
+    https://github.com/AnukritiAi-hq/anukriti-swarm.git
+cd anukriti-swarm
+bash hackathon/deploy/ec2-bootstrap.sh
 ```
+
+The script auto-detects Ubuntu vs Amazon Linux, installs Docker,
+nginx, certbot, builds the container, runs a DNS pre-flight check
+against the baked-in domain (`mcp-pgx.anukritiai.com`), and issues
+a Let's Encrypt cert.
+
+If you need to SSH in and the git clone fails with "repository not
+found", the hackathon branch hasn't been pushed yet — see the root
+README for push instructions.
 
 ## Step 3 — Get the code on the box
 
