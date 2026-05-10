@@ -13,6 +13,29 @@
 
 ---
 
+## 🌐 Platform and docs
+
+Anukriti Swarm is the research platform in the three-repo **Anukriti
+platform** ([`anukriti-pgx-core`](https://github.com/AnukritiAi-hq/anukriti-pgx-core)
++ [`anukriti`](https://github.com/Abm32/Synthatrial) + this repo).
+
+- 🧭 **[`PLATFORM.md`](https://github.com/AnukritiAi-hq/anukriti-pgx-core/blob/main/PLATFORM.md)**
+  — canonical three-repo map, hosted in `anukriti-pgx-core`. Start here
+  if you're new to the platform.
+- 📚 **[`anukriti_docs`](https://github.com/AnukritiAi-hq/anukriti_docs)** —
+  14-module progressive learning course covering what the platform is,
+  how the pieces connect, why we chose deterministic gene matching, and
+  the full tech-stack reasoning.
+- 🏗️ **[`ARCHITECTURE.md`](ARCHITECTURE.md)** — what's actually built
+  in this repo (not aspirational).
+- 📓 **[`.project-status.md`](.project-status.md)** — living session log;
+  each session #1 through #12 tells the story of one subsystem.
+- 📐 **[`architecture/`](architecture/)** — per-subsystem design docs
+  (unified runtime, evidence sufficiency, knowledge graph, MCP,
+  verification, and more).
+
+---
+
 ## 🎯 The Problem
 
 **14% of South Asians cannot activate clopidogrel** (a drug that prevents heart attacks) — yet they're prescribed it at the same rate as Europeans, where only 2% are affected.
