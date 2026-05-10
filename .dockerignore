@@ -1,0 +1,83 @@
+# Anukriti Swarm — .dockerignore
+#
+# Keeps local dev artifacts, tests, docs, and venv out of the image.
+# The goal is a small, reproducible runtime image — not a mirror of
+# the working tree.
+
+# ---- VCS and local state ----
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ---- Virtual environments ----
+venv/
+venv-*/
+.venv/
+env/
+__pypackages__/
+
+# ---- Python build artifacts ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---- IDE / editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ---- Docs and tests (kept in the repo, not in the image) ----
+tests/
+docs/
+architecture/
+whitepaper/
+technical_report/
+demo_assets/
+frontend/  # served by the companion frontend container, not the backend image
+
+# ---- Environment files (secrets must never enter the image) ----
+.env
+.env.*
+!.env.example
+
+# ---- Logs and runtime state ----
+*.log
+logs/
+artifacts/
+build_reports/
+deployment_reports/
+monitoring_reports/
+
+# ---- Session / AI tool artifacts ----
+.codex/
+.kiro/
+claude-session.jsonl
+codex-session.jsonl
+
+# ---- Container build artifacts ----
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# ---- Platform-level docs that don't belong in the image ----
+PLATFORM.md
+ROADMAP.md
+CONTRIBUTING.md
+SECURITY.md
+CODE_OF_CONDUCT.md
+ARCHITECTURE.md
+.project-status.md
+.anukriti-project-context.md

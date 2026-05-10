@@ -1,0 +1,99 @@
+# Anukriti Swarm — docker-compose.yml
+#
+# One-command startup for the live mission-control demo:
+#
+#   docker compose up --build
+#
+# Then open:
+#   http://localhost:3000/pages/index.html   (frontend)
+#   http://localhost:8000/api/health         (backend health)
+#   http://localhost:8000/api/scenarios      (scenario catalog)
+#
+# Profiles:
+#   default            backend + frontend (MCP falls back to in-memory)
+#   --profile mongo    adds MongoDB for MCP persistence
+#
+# Environment:
+#   Secrets (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, MONGODB_URI)
+#   are read from a local .env file. Start from .env.example.
+#
+#   Without any LLM keys the deterministic-only demos still work
+#   (`docker compose run --rm swarm-backend python -m demos.showcase`).
+
+services:
+
+  # ---- FastAPI backend + WebSocket ----
+  swarm-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anukriti-swarm:local
+    container_name: anukriti-swarm-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_HOST: "0.0.0.0"
+      BACKEND_PORT: "8000"
+      # LLM keys forwarded from .env if present (empty otherwise —
+      # deterministic paths don't need them).
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      # MCP persistence: unset -> in-memory fallback.
+      # Override via .env to point at Atlas or the local mongo service.
+      MONGODB_URI: "${MONGODB_URI:-}"
+      MONGODB_DB: "${MONGODB_DB:-anukriti_swarm}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - swarm-net
+
+  # ---- Static frontend (vanilla JS + D3) ----
+  # Uses a minimal python:alpine image to serve the frontend directory
+  # over HTTP. No build step required.
+  swarm-frontend:
+    image: python:3.12-alpine
+    container_name: anukriti-swarm-frontend
+    restart: unless-stopped
+    depends_on:
+      swarm-backend:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend:ro
+    command: python -m http.server 3000 --bind 0.0.0.0
+    networks:
+      - swarm-net
+
+  # ---- Optional: MongoDB for MCP persistence ----
+  # Only starts with: docker compose --profile mongo up
+  # When running, set MONGODB_URI=mongodb://swarm-mongo:27017 in .env
+  swarm-mongo:
+    image: mongo:7.0
+    container_name: anukriti-swarm-mongo
+    restart: unless-stopped
+    profiles: ["mongo"]
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: "${MONGODB_DB:-anukriti_swarm}"
+    volumes:
+      - swarm-mongo-data:/data/db
+    networks:
+      - swarm-net
+
+networks:
+  swarm-net:
+    driver: bridge
+
+volumes:
+  swarm-mongo-data:
+    driver: local
