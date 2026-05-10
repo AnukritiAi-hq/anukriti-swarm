@@ -38,17 +38,17 @@ Construction:
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from communication.bus import MessageBus
+
 from interoperability.shared_context.envelope import (
     AgentContextEnvelope,
     BiomedicalContextType,
-    VerificationState,
 )
-
 
 # One agent handler takes an AgentContextEnvelope and may return a reply.
 AgentHandler = Callable[[AgentContextEnvelope], AgentContextEnvelope | None]
@@ -94,9 +94,7 @@ class AgentMessageBus:
         # agent_id -> _Registration
         self._registrations: dict[str, _Registration] = {}
         # per-context-type subscribers (pub/sub)
-        self._type_subscribers: dict[
-            BiomedicalContextType, list[AgentHandler]
-        ] = defaultdict(list)
+        self._type_subscribers: dict[BiomedicalContextType, list[AgentHandler]] = defaultdict(list)
         self._history: list[AgentContextEnvelope] = []
         self._rejected: list[AgentContextEnvelope] = []
         self._observers: list[BusObserver] = []
@@ -172,10 +170,8 @@ class AgentMessageBus:
         # Mirror to the legacy bus so non-interop handlers still see it.
         # Failures here are non-fatal; the interop path is the source of
         # truth.
-        try:
+        with contextlib.suppress(Exception):
             self._inner.send(envelope.to_message_envelope())
-        except Exception:
-            pass
 
         # Direct targeted delivery.
         reply: AgentContextEnvelope | None = None
@@ -196,12 +192,10 @@ class AgentMessageBus:
         subscribers = self._type_subscribers.get(envelope.biomedical_context_type, [])
         if subscribers:
             for handler in subscribers:
-                try:
+                # Broken subscriber must not take the bus down;
+                # higher-level logs catch the underlying issue.
+                with contextlib.suppress(Exception):
                     handler(envelope)
-                except Exception:
-                    # Broken subscriber must not take the bus down;
-                    # higher-level logs catch the underlying issue.
-                    pass
             self._notify(envelope, "delivered")
             return None
 
@@ -215,7 +209,9 @@ class AgentMessageBus:
     # ------------------------------------------------------------------
 
     def history(
-        self, *, workflow_id: str | None = None,
+        self,
+        *,
+        workflow_id: str | None = None,
     ) -> list[AgentContextEnvelope]:
         """Chronological envelope history, optionally filtered by workflow."""
         if workflow_id is None:
@@ -247,10 +243,8 @@ class AgentMessageBus:
 
     def _notify(self, envelope: AgentContextEnvelope, event: str) -> None:
         for obs in self._observers:
-            try:
+            with contextlib.suppress(Exception):
                 obs(envelope, event)
-            except Exception:
-                pass
 
 
 __all__ = [

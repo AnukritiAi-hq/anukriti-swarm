@@ -17,12 +17,6 @@ to collaborate:
 
 from __future__ import annotations
 
-from interoperability.shared_context.envelope import (
-    AgentContextEnvelope,
-    BiomedicalContextType,
-    ConfidenceLevel,
-    VerificationState,
-)
 from interoperability.shared_context.biomedical import (
     AlleleFrequency,
     DrugContext,
@@ -32,6 +26,12 @@ from interoperability.shared_context.biomedical import (
     SharedBiomedicalContext,
     VerificationEdge,
     VerificationNode,
+)
+from interoperability.shared_context.envelope import (
+    AgentContextEnvelope,
+    BiomedicalContextType,
+    ConfidenceLevel,
+    VerificationState,
 )
 from interoperability.shared_context.protocol import (
     ContextDelta,

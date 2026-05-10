@@ -48,11 +48,10 @@ helpers. Matches the envelope idiom.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Graph node shapes
@@ -67,8 +66,8 @@ class EvidenceNode(BaseModel):
     more EvidenceNodes via ``EvidenceEdge``.
     """
 
-    source_id: str                    # e.g. "PMID:34032273"
-    source_kind: str = "unknown"      # "pmid" | "cpic" | "pharmgkb" | "pharmvar"
+    source_id: str  # e.g. "PMID:34032273"
+    source_kind: str = "unknown"  # "pmid" | "cpic" | "pharmgkb" | "pharmvar"
     title: str = ""
     confidence: float = 1.0
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -80,7 +79,7 @@ class EvidenceEdge(BaseModel):
 
     claim_id: str
     source_id: str
-    relation: str = "supports"        # "supports" | "contradicts" | "qualifies"
+    relation: str = "supports"  # "supports" | "contradicts" | "qualifies"
     weight: float = 1.0
     model_config = ConfigDict(frozen=True)
 
@@ -88,10 +87,10 @@ class EvidenceEdge(BaseModel):
 class VerificationNode(BaseModel):
     """One node in the verification_graph — a single safety check."""
 
-    check_id: str                     # e.g. "claim-abc:cpic.alignment"
+    check_id: str  # e.g. "claim-abc:cpic.alignment"
     claim_id: str
-    check_name: str                   # e.g. "cpic.alignment"
-    verdict: str                      # "pass" | "warn" | "fail"
+    check_name: str  # e.g. "cpic.alignment"
+    verdict: str  # "pass" | "warn" | "fail"
     reason: str = ""
     confidence: float = 1.0
     model_config = ConfigDict(frozen=True)
@@ -114,9 +113,9 @@ class PhenotypeState(BaseModel):
     """Per-gene phenotype + activity score + provenance origin."""
 
     gene: str
-    diplotype: str                    # e.g. "*2/*2"
+    diplotype: str  # e.g. "*2/*2"
     activity_score: float | None = None
-    phenotype: str = ""               # "Poor Metabolizer" | ...
+    phenotype: str = ""  # "Poor Metabolizer" | ...
     origin: str = "deterministic"
     confidence: float = 1.0
     rule_id: str = "cpic.activity_score"
@@ -127,9 +126,9 @@ class DrugContext(BaseModel):
     """Drug under evaluation + any CPIC alignment metadata."""
 
     drug: str
-    guideline_id: str = ""            # e.g. "CPIC:CYP2C19:clopidogrel:2022"
+    guideline_id: str = ""  # e.g. "CPIC:CYP2C19:clopidogrel:2022"
     recommendation: str = ""
-    strength: str = ""                # "strong" | "moderate" | "optional"
+    strength: str = ""  # "strong" | "moderate" | "optional"
     model_config = ConfigDict(frozen=True)
 
 
@@ -161,9 +160,7 @@ class SharedBiomedicalContext(BaseModel):
     """
 
     workflow_id: str
-    generated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # --- 8 brief-named fields ---
     ancestry: str = ""
@@ -185,32 +182,22 @@ class SharedBiomedicalContext(BaseModel):
 
     def evidence_for_claim(self, claim_id: str) -> list[EvidenceNode]:
         """Return every evidence node connected to ``claim_id``."""
-        linked_sources = {
-            e.source_id for e in self.evidence_graph_edges
-            if e.claim_id == claim_id
-        }
-        return [
-            n for n in self.evidence_graph_nodes
-            if n.source_id in linked_sources
-        ]
+        linked_sources = {e.source_id for e in self.evidence_graph_edges if e.claim_id == claim_id}
+        return [n for n in self.evidence_graph_nodes if n.source_id in linked_sources]
 
     def verdicts_for_claim(self, claim_id: str) -> list[VerificationNode]:
         """Return every verification node linked to ``claim_id``."""
-        return [
-            n for n in self.verification_graph_nodes
-            if n.claim_id == claim_id
-        ]
+        return [n for n in self.verification_graph_nodes if n.claim_id == claim_id]
 
     def population_frequency(
-        self, gene: str, allele: str, population: str,
+        self,
+        gene: str,
+        allele: str,
+        population: str,
     ) -> float | None:
         """Lookup the recorded frequency for a (gene, allele, pop) triple."""
         for af in self.allele_frequencies:
-            if (
-                af.gene == gene
-                and af.allele == allele
-                and af.population == population
-            ):
+            if af.gene == gene and af.allele == allele and af.population == population:
                 return af.frequency
         return None
 
@@ -246,7 +233,7 @@ class SharedBiomedicalContext(BaseModel):
         claim_id: str | None = None,
         relation: str = "supports",
         weight: float = 1.0,
-    ) -> "SharedBiomedicalContext":
+    ) -> SharedBiomedicalContext:
         """Append an evidence node; optionally link to a claim."""
         nodes = (*self.evidence_graph_nodes, node)
         edges = self.evidence_graph_edges
@@ -268,32 +255,29 @@ class SharedBiomedicalContext(BaseModel):
         )
 
     def add_phenotype(
-        self, state: PhenotypeState,
-    ) -> "SharedBiomedicalContext":
-        return self.model_copy(
-            update={"phenotype_state": (*self.phenotype_state, state)}
-        )
+        self,
+        state: PhenotypeState,
+    ) -> SharedBiomedicalContext:
+        return self.model_copy(update={"phenotype_state": (*self.phenotype_state, state)})
 
     def add_drug(
-        self, drug: DrugContext,
-    ) -> "SharedBiomedicalContext":
-        return self.model_copy(
-            update={"drug_context": (*self.drug_context, drug)}
-        )
+        self,
+        drug: DrugContext,
+    ) -> SharedBiomedicalContext:
+        return self.model_copy(update={"drug_context": (*self.drug_context, drug)})
 
     def add_frequency(
-        self, freq: AlleleFrequency,
-    ) -> "SharedBiomedicalContext":
-        return self.model_copy(
-            update={"allele_frequencies": (*self.allele_frequencies, freq)}
-        )
+        self,
+        freq: AlleleFrequency,
+    ) -> SharedBiomedicalContext:
+        return self.model_copy(update={"allele_frequencies": (*self.allele_frequencies, freq)})
 
     def add_verdict(
         self,
         verdict: VerificationNode,
         *,
         link_to_claim: bool = True,
-    ) -> "SharedBiomedicalContext":
+    ) -> SharedBiomedicalContext:
         """Append a verification node + optional claim edge."""
         nodes = (*self.verification_graph_nodes, verdict)
         edges = self.verification_graph_edges
@@ -317,13 +301,14 @@ class SharedBiomedicalContext(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_swarm_context(cls, ctx: Any) -> "SharedBiomedicalContext":
+    def from_swarm_context(cls, ctx: Any) -> SharedBiomedicalContext:
         """Build a shared context from a ``SwarmExecutionContext``.
 
         Duck-typed so tests can pass a dict-shaped stub. Extracts
         the fields the 8 brief-named attributes cover; graphs start
         empty and are populated by specialist agents as they run.
         """
+
         def _get(attr: str, default: Any = None) -> Any:
             if isinstance(ctx, dict):
                 return ctx.get(attr, default)

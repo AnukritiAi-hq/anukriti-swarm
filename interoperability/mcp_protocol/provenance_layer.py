@@ -39,19 +39,19 @@ control.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from integrations.mcp.client import MCPClient
 from integrations.mcp.provenance import MCPProvenanceStore, ProvenanceRecord
+
+if TYPE_CHECKING:
+    from integrations.mcp.client import MCPClient
+
 from interoperability.shared_context.envelope import (
     AgentContextEnvelope,
     BiomedicalContextType,
 )
-
-if TYPE_CHECKING:  # pragma: no cover
-    from interoperability.agent_bus.bus import AgentMessageBus
-
 
 # Map from BiomedicalContextType → MCP rule_id prefix. Keeps provenance
 # records namespaced by biomedical concern so queries can filter.
@@ -94,7 +94,8 @@ class ProvenancePropagationLayer:
     # ------------------------------------------------------------------
 
     def stamp(
-        self, envelope: AgentContextEnvelope,
+        self,
+        envelope: AgentContextEnvelope,
     ) -> AgentContextEnvelope:
         """Persist provenance for this envelope + return an annotated copy.
 
@@ -109,9 +110,7 @@ class ProvenancePropagationLayer:
         verdict with no cited evidence") but skip the upstream resolve.
         """
         # Build the ProvenanceRecord.
-        rule_id = _CONTEXT_TYPE_RULE_PREFIX.get(
-            envelope.biomedical_context_type, "unknown"
-        )
+        rule_id = _CONTEXT_TYPE_RULE_PREFIX.get(envelope.biomedical_context_type, "unknown")
         # Use the message_id as claim_id so downstream lookups can
         # join envelopes to their provenance records without a second
         # index. Fall back to a random hex only if message_id is empty
@@ -130,7 +129,7 @@ class ProvenancePropagationLayer:
             evidence_sources=list(envelope.evidence_references),
             verification_verdict=envelope.verification_state.value,
             confidence=envelope.confidence_value,
-            claim_id=claim_id or "",   # ProvenanceRecord auto-generates if blank
+            claim_id=claim_id or "",  # ProvenanceRecord auto-generates if blank
         )
         result = self.store.record(record)
         stored_claim_id = (
@@ -169,16 +168,16 @@ class ProvenancePropagationLayer:
 
         Attach via ``bus.observe(layer.as_observer())``.
         """
+
         def _observer(envelope: AgentContextEnvelope, event: str) -> None:
             if event != "delivered":
                 return
-            try:
+            # Never let a provenance-stamp failure disrupt message
+            # delivery. The bus has already delivered the envelope;
+            # we just missed recording the chain.
+            with contextlib.suppress(Exception):
                 self.stamp(envelope)
-            except Exception:
-                # Never let a provenance-stamp failure disrupt message
-                # delivery. The bus has already delivered the envelope;
-                # we just missed recording the chain.
-                pass
+
         return _observer
 
     # ------------------------------------------------------------------
@@ -198,9 +197,8 @@ class ProvenancePropagationLayer:
             for key in ("gene", "drug", "phenotype", "population", "frequency"):
                 if key in envelope.payload:
                     payload_summary += f" {key}={envelope.payload[key]!r}"
-        return (
-            f"[{kind}] agent={agent} workflow={workflow}"
-            + (payload_summary if payload_summary else "")
+        return f"[{kind}] agent={agent} workflow={workflow}" + (
+            payload_summary if payload_summary else ""
         )
 
     def _gather_upstream_sources(

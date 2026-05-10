@@ -68,11 +68,6 @@ Public surface (lands progressively):
 
 from __future__ import annotations
 
-from interoperability.agent_bus import AgentHandler, AgentMessageBus, BusObserver
-from interoperability.mcp_protocol import (
-    ProvenancePropagationLayer,
-    VerificationStatePropagator,
-)
 from interoperability.a2a import (
     CollaborationResult,
     DelegationResult,
@@ -81,6 +76,11 @@ from interoperability.a2a import (
     escalate_to_safety,
     sync_evidence,
     verify_handoff,
+)
+from interoperability.agent_bus import AgentHandler, AgentMessageBus, BusObserver
+from interoperability.mcp_protocol import (
+    ProvenancePropagationLayer,
+    VerificationStatePropagator,
 )
 from interoperability.shared_context import (
     AgentContextEnvelope,
@@ -126,4 +126,15 @@ __all__: list[str] = [
     "ContextDelta",
     "DeltaKind",
     "ScopeFirewallError",
+    # A2A workflows
+    "CollaborationResult",
+    "DelegationResult",
+    "collaborate",
+    "delegate_to_specialist",
+    "escalate_to_safety",
+    "sync_evidence",
+    "verify_handoff",
+    # MCP propagation
+    "ProvenancePropagationLayer",
+    "VerificationStatePropagator",
 ]

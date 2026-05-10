@@ -52,9 +52,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from interoperability.mcp_protocol.verification_propagator import (
         VerificationStatePropagator,
     )
-    from interoperability.shared_context.biomedical import (
-        SharedBiomedicalContext,
-    )
 
 
 @dataclass
@@ -93,14 +90,14 @@ class CollaborationResult:
 
 def delegate_to_specialist(
     *,
-    bus: "AgentMessageBus",
+    bus: AgentMessageBus,
     from_agent: str,
     to_agent: str,
     context_type: BiomedicalContextType,
     workflow_id: str,
     payload: dict[str, Any] | None = None,
     evidence_references: tuple[str, ...] = (),
-    provenance_layer: "ProvenancePropagationLayer | None" = None,
+    provenance_layer: ProvenancePropagationLayer | None = None,
 ) -> DelegationResult:
     """Orchestrator-to-specialist dispatch through the bus.
 
@@ -141,13 +138,13 @@ def delegate_to_specialist(
 
 def collaborate(
     *,
-    bus: "AgentMessageBus",
+    bus: AgentMessageBus,
     from_agent: str,
     specialists: list[tuple[str, BiomedicalContextType]],
     workflow_id: str,
     payload: dict[str, Any] | None = None,
     evidence_references: tuple[str, ...] = (),
-    provenance_layer: "ProvenancePropagationLayer | None" = None,
+    provenance_layer: ProvenancePropagationLayer | None = None,
 ) -> CollaborationResult:
     """Parallel (sequential-in-time) multi-specialist invocation.
 
@@ -181,12 +178,12 @@ def collaborate(
 
 def escalate_to_safety(
     *,
-    bus: "AgentMessageBus",
+    bus: AgentMessageBus,
     from_agent: str,
     workflow_id: str,
     run_dict: dict[str, Any],
-    agent: "BiomedicalVerificationAgent",
-    propagator: "VerificationStatePropagator",
+    agent: BiomedicalVerificationAgent,
+    propagator: VerificationStatePropagator,
     target_agent: str = "safety_agent",
 ) -> AgentContextEnvelope:
     """Hand off a suspect claim to the safety agent.
@@ -210,7 +207,9 @@ def escalate_to_safety(
         payload={"escalation_reason": "safety_handoff", "run": run_dict},
     )
     return propagator.lift_with_agent(
-        envelope, agent=agent, run_dict=run_dict,
+        envelope,
+        agent=agent,
+        run_dict=run_dict,
     )
 
 
@@ -221,10 +220,10 @@ def escalate_to_safety(
 
 def verify_handoff(
     *,
-    bus: "AgentMessageBus",
+    bus: AgentMessageBus,
     envelope: AgentContextEnvelope,
-    outcome: "VerificationOutcome",
-    propagator: "VerificationStatePropagator",
+    outcome: VerificationOutcome,
+    propagator: VerificationStatePropagator,
 ) -> AgentContextEnvelope:
     """Lift a completed verification onto the envelope and re-send.
 
@@ -250,12 +249,12 @@ def verify_handoff(
 
 def sync_evidence(
     *,
-    bus: "AgentMessageBus",
+    bus: AgentMessageBus,
     from_agent: str,
     workflow_id: str,
     evidence_references: tuple[str, ...],
     target_agents: list[str] | None = None,
-    provenance_layer: "ProvenancePropagationLayer | None" = None,
+    provenance_layer: ProvenancePropagationLayer | None = None,
 ) -> list[AgentContextEnvelope]:
     """Push an evidence bundle to every specialist that needs it.
 

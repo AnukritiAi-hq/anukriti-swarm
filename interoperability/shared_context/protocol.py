@@ -52,7 +52,7 @@ sharing a protocol.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -111,10 +111,8 @@ class ContextDelta:
     kind: DeltaKind
     payload: Any
     agent_id: str
-    claim_id: str = ""    # for evidence / verdict deltas
-    recorded_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    claim_id: str = ""  # for evidence / verdict deltas
+    recorded_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -124,9 +122,7 @@ class ContextDelta:
             "recorded_at": self.recorded_at.isoformat(),
             # payload is a pydantic model — use model_dump when possible
             "payload": (
-                self.payload.model_dump()
-                if hasattr(self.payload, "model_dump")
-                else self.payload
+                self.payload.model_dump() if hasattr(self.payload, "model_dump") else self.payload
             ),
         }
 
@@ -163,21 +159,26 @@ class SwarmContextProtocol:
         freq = protocol.read_frequency(gene="CYP2C19", allele="*2", population="SAS")
 
         # Write (via validated delta)
-        protocol.apply(ContextDelta(
-            kind=DeltaKind.ADD_FREQUENCY,
-            payload=AlleleFrequency(
-                gene="CYP2C19", allele="*2", population="SAS",
-                frequency=0.36, source="gnomAD v4.0",
-            ),
-            agent_id="population_sas",
-        ))
+        protocol.apply(
+            ContextDelta(
+                kind=DeltaKind.ADD_FREQUENCY,
+                payload=AlleleFrequency(
+                    gene="CYP2C19",
+                    allele="*2",
+                    population="SAS",
+                    frequency=0.36,
+                    source="gnomAD v4.0",
+                ),
+                agent_id="population_sas",
+            )
+        )
 
         # Snapshot the latest context
         latest = protocol.context
     """
 
     agent_id: str
-    bus: "AgentMessageBus"
+    bus: AgentMessageBus
     context: SharedBiomedicalContext
     _history: list[ContextDelta] = field(default_factory=list)
 
@@ -195,7 +196,11 @@ class SwarmContextProtocol:
         return dict(self.context.genotype)
 
     def read_frequency(
-        self, *, gene: str, allele: str, population: str,
+        self,
+        *,
+        gene: str,
+        allele: str,
+        population: str,
     ) -> float | None:
         return self.context.population_frequency(gene, allele, population)
 
@@ -267,12 +272,11 @@ class SwarmContextProtocol:
 
         # 4. Evidence + verdict deltas require a claim_id (otherwise
         #    the delta can't participate in graph queries).
-        if delta.kind in (DeltaKind.ADD_EVIDENCE, DeltaKind.ADD_VERDICT):
-            if not delta.claim_id:
-                raise ScopeFirewallError(
-                    f"delta kind={delta.kind.value} requires a non-empty claim_id "
-                    f"so it can be attached to the evidence/verification graph"
-                )
+        if delta.kind in (DeltaKind.ADD_EVIDENCE, DeltaKind.ADD_VERDICT) and not delta.claim_id:
+            raise ScopeFirewallError(
+                f"delta kind={delta.kind.value} requires a non-empty claim_id "
+                f"so it can be attached to the evidence/verification graph"
+            )
 
     # ------------------------------------------------------------------
     # Application
@@ -280,7 +284,8 @@ class SwarmContextProtocol:
 
     @staticmethod
     def _apply(
-        delta: ContextDelta, ctx: SharedBiomedicalContext,
+        delta: ContextDelta,
+        ctx: SharedBiomedicalContext,
     ) -> SharedBiomedicalContext:
         if delta.kind is DeltaKind.ADD_FREQUENCY:
             return ctx.add_frequency(delta.payload)
@@ -290,7 +295,8 @@ class SwarmContextProtocol:
             return ctx.add_drug(delta.payload)
         if delta.kind is DeltaKind.ADD_EVIDENCE:
             return ctx.add_evidence_node(
-                delta.payload, claim_id=delta.claim_id,
+                delta.payload,
+                claim_id=delta.claim_id,
             )
         if delta.kind is DeltaKind.ADD_VERDICT:
             # VerificationNode carries its own claim_id — use it.

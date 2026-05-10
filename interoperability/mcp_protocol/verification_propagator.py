@@ -83,7 +83,7 @@ class VerificationStatePropagator:
 
     # Optional — when present, the propagator also threads per-claim
     # verification nodes into the shared context graph.
-    context_protocol: "SwarmContextProtocol | None" = None
+    context_protocol: SwarmContextProtocol | None = None
 
     # ------------------------------------------------------------------
     # Primary API
@@ -92,7 +92,7 @@ class VerificationStatePropagator:
     def lift(
         self,
         envelope: AgentContextEnvelope,
-        outcome: "VerificationOutcome",
+        outcome: VerificationOutcome,
     ) -> AgentContextEnvelope:
         """Return a new envelope with the outcome's safety state applied."""
         tier = str(getattr(outcome, "tier", "") or "").lower()
@@ -103,9 +103,7 @@ class VerificationStatePropagator:
         if decision is not None:
             score = getattr(decision, "score", None)
             if score is not None:
-                confidence_value = float(
-                    getattr(score, "confidence", 1.0) or 1.0
-                )
+                confidence_value = float(getattr(score, "confidence", 1.0) or 1.0)
 
         annotated = envelope.with_verification(
             state,
@@ -122,12 +120,13 @@ class VerificationStatePropagator:
         self,
         envelope: AgentContextEnvelope,
         *,
-        agent: "BiomedicalVerificationAgent",
+        agent: BiomedicalVerificationAgent,
         run_dict: dict[str, Any],
     ) -> AgentContextEnvelope:
         """Run the safety agent inline and lift its outcome."""
         outcome = agent.verify_run(
-            run_dict, correlation_id=envelope.workflow_id,
+            run_dict,
+            correlation_id=envelope.workflow_id,
         )
         return self.lift(envelope, outcome)
 
@@ -137,7 +136,7 @@ class VerificationStatePropagator:
 
     def as_pre_send_guard(
         self,
-        agent: "BiomedicalVerificationAgent",
+        agent: BiomedicalVerificationAgent,
     ):
         """Return a callable that agents use to verify before sending.
 
@@ -151,21 +150,25 @@ class VerificationStatePropagator:
         gives agents the option to check *before* they publish so
         they can escalate rather than hitting the gate.
         """
+
         def _guard(
             envelope: AgentContextEnvelope,
             *,
             run_dict: dict[str, Any],
         ) -> AgentContextEnvelope:
             return self.lift_with_agent(
-                envelope, agent=agent, run_dict=run_dict,
+                envelope,
+                agent=agent,
+                run_dict=run_dict,
             )
+
         return _guard
 
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 
-    def _propagate_to_graph(self, outcome: "VerificationOutcome") -> None:
+    def _propagate_to_graph(self, outcome: VerificationOutcome) -> None:
         """Append per-claim VerificationNodes to the shared context graph."""
         if self.context_protocol is None:
             return
@@ -181,9 +184,7 @@ class VerificationStatePropagator:
             claim_id = getattr(tr, "claim_id", "") or ""
             if not claim_id:
                 continue
-            check_name = getattr(tr, "rule_id", "") or getattr(
-                tr, "validator", ""
-            )
+            check_name = getattr(tr, "rule_id", "") or getattr(tr, "validator", "")
             verdict = str(getattr(tr, "state", "") or "pass").lower()
             node = VerificationNode(
                 check_id=f"{claim_id}:{check_name}",

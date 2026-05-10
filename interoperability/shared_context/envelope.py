@@ -36,11 +36,9 @@ via ``.with_evidence(...)`` / ``.with_verification(...)`` helpers.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
-
-from pydantic import BaseModel, Field
 
 from communication.messages import (
     DeliveryStatus,
@@ -48,7 +46,7 @@ from communication.messages import (
     MessageType,
     Priority,
 )
-
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Domain enums — strictly genomic scope
@@ -132,7 +130,7 @@ class AgentContextEnvelope(BaseModel):
         description="MCP source IDs (PMIDs, CPIC guideline ids)",
     )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
     verification_state: VerificationState = VerificationState.PENDING
     confidence_level: ConfidenceLevel = ConfidenceLevel.MODERATE
@@ -159,7 +157,9 @@ class AgentContextEnvelope(BaseModel):
 
     # --- Scalar confidence for propagation math (optional) ---
     confidence_value: float = Field(
-        1.0, ge=0.0, le=1.0,
+        1.0,
+        ge=0.0,
+        le=1.0,
         description="Numeric confidence if available (0.0-1.0)",
     )
 
@@ -195,7 +195,7 @@ class AgentContextEnvelope(BaseModel):
     # Annotated copies
     # ------------------------------------------------------------------
 
-    def with_evidence(self, *source_ids: str) -> "AgentContextEnvelope":
+    def with_evidence(self, *source_ids: str) -> AgentContextEnvelope:
         """Return a new envelope with evidence_references extended.
 
         Frozen-dataclass idiom — never mutates the original. Used by
@@ -215,7 +215,7 @@ class AgentContextEnvelope(BaseModel):
         *,
         confidence_level: ConfidenceLevel | None = None,
         confidence_value: float | None = None,
-    ) -> "AgentContextEnvelope":
+    ) -> AgentContextEnvelope:
         """Return a new envelope with verification state updated."""
         update: dict[str, Any] = {"verification_state": state}
         if confidence_level is not None:
@@ -224,7 +224,7 @@ class AgentContextEnvelope(BaseModel):
             update["confidence_value"] = max(0.0, min(1.0, float(confidence_value)))
         return self.model_copy(update=update)
 
-    def with_delivery(self, status: DeliveryStatus) -> "AgentContextEnvelope":
+    def with_delivery(self, status: DeliveryStatus) -> AgentContextEnvelope:
         return self.model_copy(update={"status": status})
 
     # ------------------------------------------------------------------
@@ -270,7 +270,7 @@ class AgentContextEnvelope(BaseModel):
         envelope: MessageEnvelope,
         *,
         biomedical_context_type: BiomedicalContextType,
-    ) -> "AgentContextEnvelope":
+    ) -> AgentContextEnvelope:
         """Lift a legacy envelope into the interop envelope.
 
         Caller supplies the ``biomedical_context_type`` because the
@@ -284,9 +284,9 @@ class AgentContextEnvelope(BaseModel):
             target_agent=envelope.target_agent,
             message_type=envelope.message_type,
             reply_to=envelope.reply_to,
-            payload={
-                k: v for k, v in envelope.payload.items() if k != "_interop"
-            } if envelope.payload else {},
+            payload={k: v for k, v in envelope.payload.items() if k != "_interop"}
+            if envelope.payload
+            else {},
             workflow_id=envelope.correlation_id,
             causation_id=envelope.causation_id,
             trace_id=envelope.trace_id,
@@ -294,12 +294,8 @@ class AgentContextEnvelope(BaseModel):
             origin=envelope.origin,
             timestamp=envelope.timestamp,
             status=envelope.status,
-            verification_state=VerificationState(
-                interop.get("verification_state", "pending")
-            ),
-            confidence_level=ConfidenceLevel(
-                interop.get("confidence_level", "moderate")
-            ),
+            verification_state=VerificationState(interop.get("verification_state", "pending")),
+            confidence_level=ConfidenceLevel(interop.get("confidence_level", "moderate")),
             confidence_value=float(interop.get("confidence_value") or 1.0),
             evidence_references=tuple(interop.get("evidence_references") or ()),
             biomedical_context_type=biomedical_context_type,
