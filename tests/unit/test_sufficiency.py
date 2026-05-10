@@ -97,8 +97,9 @@ def engine() -> SufficiencyDecisionEngine:
 
 
 class TestSufficiencyDecisionEnum:
-    def test_enum_has_exactly_7_decisions(self) -> None:
-        assert len(list(SufficiencyDecision)) == 7
+    def test_enum_has_exactly_8_decisions(self) -> None:
+        # 7 baseline (R1-R12) + 1 opt-in (M4 EXTRAPOLATION_*).
+        assert len(list(SufficiencyDecision)) == 8
 
     def test_decision_values_are_stable(self) -> None:
         # Wire format — downstream UI / JSON consumers read these.
@@ -109,6 +110,10 @@ class TestSufficiencyDecisionEnum:
         assert SufficiencyDecision.ESCALATE.value == "escalate"
         assert SufficiencyDecision.REQUEST_MORE.value == "request_more"
         assert SufficiencyDecision.PASS_WITH_CAVEAT.value == "pass_with_caveat"
+        assert (
+            SufficiencyDecision.EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT.value
+            == "extrapolation_with_cross_ancestry_support"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -488,3 +493,158 @@ class TestDeterminism:
         r3 = engine.decide(covered_analysis)
         assert r1.decision is r2.decision is r3.decision
         assert r1.rationale == r2.rationale == r3.rationale
+
+
+# ---------------------------------------------------------------------------
+# M4 — cross-ancestry extrapolation hedge (opt-in, off by default)
+# ---------------------------------------------------------------------------
+
+
+class TestM4CrossAncestryExtrapolation:
+    """M4 is a strictly-more-specific variant of R9 that fires only
+    when the engine is constructed with
+    ``allow_cross_ancestry_extrapolation=True`` AND all of ALLELE,
+    PHENOTYPE, CPIC, RECOMMENDATION are COVERED while POPULATION
+    is UNCERTAIN.
+
+    The off-by-default discipline preserves the byte-identical
+    regression contract for flagship demos. Opt-in is via
+    constructor arg, not runtime flag."""
+
+    def test_m4_does_not_fire_when_flag_off(self, covered_analysis) -> None:
+        # Default engine — flag is False.
+        engine = SufficiencyDecisionEngine()
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        # R9 should fire as before — byte-identical to pre-M4 behavior.
+        assert report.decision is SufficiencyDecision.DOWNGRADE
+        assert "R9" in report.rationale
+
+    def test_m4_fires_when_flag_on_and_preconditions_met(self, covered_analysis) -> None:
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        # POPULATION UNCERTAIN, everything else COVERED — M4's precondition.
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT
+        assert "M4" in report.rationale
+        assert report.allows_synthesis  # Hedge allows synthesis.
+
+    def test_m4_yields_to_r1_hard_conflict(self, covered_analysis) -> None:
+        # Even with the flag on, a hard conflict (CONFLICT_FREE MISSING)
+        # must BLOCK — safety trumps hedging.
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+                ClaimEvidenceFacet.CONFLICT_FREE: FacetCoverageState.MISSING,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.BLOCK
+        assert "R1" in report.rationale
+
+    def test_m4_yields_to_r8_recommendation_uncertain(self, covered_analysis) -> None:
+        # M4 requires RECOMMENDATION COVERED. When it's UNCERTAIN,
+        # R8 fires instead (and M4's precondition isn't met anyway).
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.RECOMMENDATION: FacetCoverageState.UNCERTAIN,
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.DOWNGRADE
+        assert "R8" in report.rationale
+
+    def test_m4_does_not_fire_when_cpic_uncertain(self, covered_analysis) -> None:
+        # M4 requires CPIC COVERED. When CPIC is UNCERTAIN, M4's
+        # precondition fails and R9 fires (R9 doesn't require all
+        # other facets to be COVERED; it just fires on POPULATION
+        # UNCERTAIN).
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+                ClaimEvidenceFacet.CPIC: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.DOWNGRADE
+        assert "R9" in report.rationale
+
+    def test_m4_does_not_fire_when_allele_uncertain(self, covered_analysis) -> None:
+        # Same pattern: M4 requires ALLELE COVERED. If not, R9 wins.
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+                ClaimEvidenceFacet.ALLELE: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.DOWNGRADE
+        assert "R9" in report.rationale
+
+    def test_m4_does_not_fire_when_population_is_covered(self, covered_analysis) -> None:
+        # Everything covered → R12 SUFFICIENT, regardless of flag.
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        report = engine.decide(covered_analysis)
+        assert report.decision is SufficiencyDecision.SUFFICIENT
+
+    def test_m4_does_not_fire_when_population_is_missing(self, covered_analysis) -> None:
+        # MISSING fires R5 ESCALATE, not M4 (M4 is for UNCERTAIN).
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.MISSING,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.ESCALATE
+        assert "R5" in report.rationale
+
+    def test_m4_is_deterministic(self, covered_analysis) -> None:
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        r1 = engine.decide(analysis)
+        r2 = engine.decide(analysis)
+        r3 = engine.decide(analysis)
+        assert r1.decision is r2.decision is r3.decision
+        assert r1.rationale == r2.rationale == r3.rationale
+
+    def test_extrapolation_outcome_allows_synthesis(self, covered_analysis) -> None:
+        # The new enum value must be in allows_synthesis (the whole
+        # point of the hedge is that narrative still runs, with the
+        # hedge attribution surfaced in the rationale).
+        engine = SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)
+        analysis = make_analysis_with_state(
+            base=covered_analysis,
+            overrides={
+                ClaimEvidenceFacet.POPULATION: FacetCoverageState.UNCERTAIN,
+            },
+        )
+        report = engine.decide(analysis)
+        assert report.decision is SufficiencyDecision.EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT
+        assert report.allows_synthesis
+        assert not report.is_blocking

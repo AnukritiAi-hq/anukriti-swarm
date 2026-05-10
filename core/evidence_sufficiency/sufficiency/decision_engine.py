@@ -47,6 +47,8 @@ changes without reading control flow.
     R6  CPIC == MISSING                            -> REQUEST_MORE
     R7  ALLELE == MISSING                          -> REQUEST_MORE
     R8  RECOMMENDATION == UNCERTAIN                -> DOWNGRADE
+    M4  POPULATION == UNCERTAIN with cross-ancestry
+        support (opt-in, off by default)           -> EXTRAPOLATION_*
     R9  POPULATION == UNCERTAIN                    -> DOWNGRADE
     R10 any remaining UNCERTAIN facet              -> DOWNGRADE
     R11 CONFLICT_FREE == UNCERTAIN (soft only)     -> PASS_WITH_CAVEAT
@@ -103,7 +105,15 @@ if TYPE_CHECKING:
 
 
 class SufficiencyDecision(str, Enum):
-    """The seven allowed outcomes. Extending is a code change."""
+    """The allowed outcomes. Extending is a code change.
+
+    Seven baseline values (R1-R12 rules). The eighth value
+    ``EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT`` is an optional
+    outcome produced only when the engine is constructed with
+    ``allow_cross_ancestry_extrapolation=True``. Default behavior
+    does not emit this value, preserving the byte-identical
+    regression contract for existing consumers.
+    """
 
     SUFFICIENT = "sufficient"
     PASS_WITH_CAVEAT = "pass_with_caveat"
@@ -112,6 +122,7 @@ class SufficiencyDecision(str, Enum):
     ESCALATE = "escalate"
     ABSTAIN = "abstain"
     BLOCK = "block"
+    EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT = "extrapolation_with_cross_ancestry_support"
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +175,7 @@ class SufficiencyReport:
             SufficiencyDecision.SUFFICIENT,
             SufficiencyDecision.PASS_WITH_CAVEAT,
             SufficiencyDecision.DOWNGRADE,
+            SufficiencyDecision.EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT,
         }
 
     def to_dict(self) -> dict:
@@ -189,11 +201,40 @@ class SufficiencyReport:
 class SufficiencyDecisionEngine:
     """Deterministic policy engine.
 
-    Stateless. Every call is a pure function of its inputs. No
-    options — behaviour is fixed by the 12-rule decision table.
-    Tuning thresholds is a code change, which means it shows up in
-    review rather than as a quietly-drifting config flag.
+    Every call is a pure function of its inputs plus the engine's
+    one construction-time flag (``allow_cross_ancestry_extrapolation``).
+
+    The flag is off by default, preserving the byte-identical
+    regression contract for existing consumers. When on, rule M4
+    is enabled — a strictly more specific variant of R9 that
+    emits ``EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT`` when
+    population evidence is thin but all other facets are solid.
+
+    Design rationale for the flag (rather than making M4
+    always-on):
+
+    - Existing consumers (``SufficiencyCheckpoint``,
+      ``evidence_sufficiency_demo``, ``evidence_sufficiency_abstention_demo``,
+      ``unified_demo``) expect R9 to fire for the canonical AFR +
+      CYP2D6 case. Enabling M4 always-on would change their
+      output signatures, breaking the byte-identical regression
+      contract.
+    - Cross-ancestry extrapolation is a *deliberate* epistemic
+      posture — "we hedge honestly when cross-ancestry
+      consistency is documented." It's the right default for
+      cohort-scale simulation scenarios (``demos/cohort_demo.py``),
+      but it's a scope extension for the single-scenario flagship
+      demos.
+    - The off-by-default pattern matches the discipline used for
+      every other opt-in capability in the platform
+      (``ExecutionCoordinator.sufficiency_checkpoint``,
+      ``GeminiOrchestrator.memory_advisor``, and the new
+      simulation scope). Opt-in via constructor argument is
+      visible in code review; feature flags are not.
     """
+
+    def __init__(self, *, allow_cross_ancestry_extrapolation: bool = False) -> None:
+        self.allow_cross_ancestry_extrapolation = allow_cross_ancestry_extrapolation
 
     def decide(
         self,
@@ -202,7 +243,7 @@ class SufficiencyDecisionEngine:
         provenance: ProvenanceCoverageReport | None = None,
         findings: Iterable[ConflictFinding] = (),
     ) -> SufficiencyReport:
-        """Apply the 12-rule table and return a SufficiencyReport."""
+        """Apply the rule table and return a SufficiencyReport."""
 
         findings_tuple = tuple(findings)
         decision, rationale = self._apply_rules(coverage, provenance, findings_tuple)
@@ -220,8 +261,8 @@ class SufficiencyDecisionEngine:
     # Rule table
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _apply_rules(
+        self,
         coverage: ClaimCoverageAnalysis,
         provenance: ProvenanceCoverageReport | None,
         findings: tuple[ConflictFinding, ...],
@@ -288,6 +329,32 @@ class SufficiencyDecisionEngine:
             return (
                 SufficiencyDecision.DOWNGRADE,
                 "R8: recommendation weakly cited — confidence lowered",
+            )
+
+        # M4 — cross-ancestry extrapolation hedge (opt-in, off by default)
+        #
+        # Preconditions: POPULATION is UNCERTAIN, but ALLELE +
+        # PHENOTYPE + CPIC + RECOMMENDATION are all COVERED. That
+        # combination means direct population evidence is thin but
+        # everything else is solid — we have enough cross-ancestry
+        # context to hedge honestly rather than just downgrade.
+        #
+        # When the flag is off (default), this rule is skipped and
+        # R9 fires as before — preserving the byte-identical
+        # regression contract for existing demos.
+        if (
+            self.allow_cross_ancestry_extrapolation
+            and states[ClaimEvidenceFacet.POPULATION] is FacetCoverageState.UNCERTAIN
+            and states[ClaimEvidenceFacet.ALLELE] is FacetCoverageState.COVERED
+            and states[ClaimEvidenceFacet.PHENOTYPE] is FacetCoverageState.COVERED
+            and states[ClaimEvidenceFacet.CPIC] is FacetCoverageState.COVERED
+            and states[ClaimEvidenceFacet.RECOMMENDATION] is FacetCoverageState.COVERED
+        ):
+            return (
+                SufficiencyDecision.EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT,
+                f"M4: {coverage.population.value} direct population evidence thin "
+                f"but ALLELE + PHENOTYPE + CPIC + RECOMMENDATION all covered — "
+                f"cross-ancestry extrapolation hedge applied",
             )
 
         # R9 — population uncertain
