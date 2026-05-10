@@ -8,16 +8,12 @@ uvicorn==0.29.0
 websockets==15.0.1
 
 # AI/ML
-langchain==0.2.1
 openai==1.30.1
 anthropic==0.25.8
 
 # Data
 pandas==2.2.2
 numpy==1.26.4
-
-# Vector Store
-qdrant-client==1.9.1
 
 # MCP persistence (pymongo is now a first-class dependency; the MCP
 # layer still falls back to in-memory when MONGODB_URI is not set)

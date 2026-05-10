@@ -40,10 +40,14 @@ config toggle.
 | Frontend | Vanilla JS + D3 v7.9.0 (vendored) | No build step, no npm — D3 only used for the force-directed graph view |
 | Dev tooling | `pytest==8.2.0`, `ruff==0.4.4`, `mypy==1.10.0` | Progressive ruff hard-gate (see `.project-status.md` sessions #9–#11) |
 
-**Not used, despite appearing in `requirements.txt`:** `langchain`,
-`qdrant-client`. These are orphan declarations from an earlier design
-phase. Slated for removal in a follow-up cleanup commit (tracked in the
-backlog; not critical because they're installed but never imported).
+**What we don't depend on:** `langchain` / `langgraph` (agent framework
+is hand-rolled in `core/orchestrator/` + `agents/`), and `qdrant-client`
+(retrieval uses in-tree TF-IDF via `retrieval/indexing/embeddings.py`;
+a vector-DB swap is a one-file change behind the `BiomedicalRetriever`
+ABC). Historical docstrings and doc files still mention "LangGraph-
+style" / "Qdrant-compatible" patterns — those describe the *shape* of
+the code (state graph, vector-search-compatible interface), not a
+runtime dependency.
 
 ---
 
