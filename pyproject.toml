@@ -42,6 +42,9 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 addopts = "-v --tb=short"
+markers = [
+    "slow: integration tests that invoke subprocesses or are otherwise slow (>1s)",
+]
 
 [tool.mypy]
 python_version = "3.11"
