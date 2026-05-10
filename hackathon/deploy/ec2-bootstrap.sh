@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
 # Anukriti PGx — one-shot EC2 bootstrap.
 #
+# Target deployment:
+#   domain : mcp-pgx.anukritiai.com
+#   email  : abhimanyurbsa@gmail.com
+#
 # Run on a fresh Amazon Linux 2023 EC2 instance after cloning the
 # repo. Assumes the repo is already at ~/anukriti-swarm on the
 # ``hackathon/agents-assemble-2026`` branch.
 #
-# Usage:
+# Usage (defaults baked in):
 #     cd ~/anukriti-swarm
 #     bash hackathon/deploy/ec2-bootstrap.sh
+#
+# Override for a different target:
+#     DOMAIN=other.example.com EMAIL=you@example.com \
+#         bash hackathon/deploy/ec2-bootstrap.sh
 
 set -euo pipefail
 
+# ------------------------------------------------------------------
+# Defaults for this deploy
+# ------------------------------------------------------------------
+# These are baked in so you can just run `bash ec2-bootstrap.sh`
+# on the box without exporting env vars. Override by exporting
+# DOMAIN= / EMAIL= / REPO_DIR= before invocation if needed.
 REPO_DIR="${REPO_DIR:-$HOME/anukriti-swarm}"
-DOMAIN="${DOMAIN:-}"         # e.g. anukriti-pgx.yourdomain.com
-EMAIL="${EMAIL:-}"           # for certbot
+DOMAIN="${DOMAIN:-mcp-pgx.anukritiai.com}"
+EMAIL="${EMAIL:-abhimanyurbsa@gmail.com}"
 
 log() { printf '\n\033[1;36m[bootstrap]\033[0m %s\n' "$*"; }
+
+log "deploy target: $DOMAIN"
+log "certbot contact: $EMAIL"
 
 # ------------------------------------------------------------------
 # Sanity checks
@@ -98,10 +115,10 @@ docker compose -f hackathon/deploy/docker-compose.yml ps
 
 log "configuring nginx"
 sudo cp hackathon/deploy/nginx.conf /etc/nginx/conf.d/anukriti-pgx.conf
-if [[ -n "$DOMAIN" ]]; then
-    sudo sed -i "s/anukriti-pgx.example.com/$DOMAIN/g" \
-        /etc/nginx/conf.d/anukriti-pgx.conf
-fi
+# If DOMAIN differs from the baked-in default, rewrite it. When DOMAIN
+# matches the default, this is a no-op.
+sudo sed -i "s/mcp-pgx.anukritiai.com/$DOMAIN/g" \
+    /etc/nginx/conf.d/anukriti-pgx.conf
 
 # Remove default welcome server block if present (Amazon Linux 2023
 # ships one that claims port 80).
@@ -116,15 +133,31 @@ sudo systemctl reload nginx
 # ------------------------------------------------------------------
 
 if [[ -n "$DOMAIN" && -n "$EMAIL" ]]; then
-    log "installing certbot and requesting cert for $DOMAIN"
-    sudo dnf install -y certbot python3-certbot-nginx >/dev/null
-    sudo certbot --nginx \
-        -d "$DOMAIN" \
-        --non-interactive \
-        --agree-tos \
-        -m "$EMAIL" \
-        --redirect
-    log "TLS enabled. Test: curl -sSI https://$DOMAIN/mcp"
+    # Pre-flight: check that DOMAIN actually resolves to this box's
+    # public IP. certbot will fail otherwise and the error is cryptic.
+    log "checking that $DOMAIN resolves to this EC2 instance"
+    this_ip="$(curl -s -4 ifconfig.me || true)"
+    resolved_ip="$(getent hosts "$DOMAIN" 2>/dev/null | awk '{print $1}' | head -1 || true)"
+
+    if [[ -z "$resolved_ip" ]]; then
+        log "WARNING: $DOMAIN does not resolve yet. Set an A record:"
+        log "    $DOMAIN  A  $this_ip"
+        log "Then re-run this script. Skipping TLS for now."
+    elif [[ "$resolved_ip" != "$this_ip" ]]; then
+        log "WARNING: $DOMAIN resolves to $resolved_ip but this box is $this_ip."
+        log "Fix the A record and re-run. Skipping TLS for now."
+    else
+        log "DNS OK ($DOMAIN -> $this_ip). Installing certbot and issuing cert."
+        sudo dnf install -y certbot python3-certbot-nginx >/dev/null
+        sudo certbot --nginx \
+            -d "$DOMAIN" \
+            --non-interactive \
+            --agree-tos \
+            -m "$EMAIL" \
+            --redirect
+        log "TLS enabled. Test: curl -sSI https://$DOMAIN/mcp"
+        log "Register this in Prompt Opinion: https://$DOMAIN/mcp"
+    fi
 else
     log "skipping TLS — set DOMAIN + EMAIL env vars and re-run to enable"
     log "HTTP test: curl -sSI http://$(curl -s ifconfig.me)/"
