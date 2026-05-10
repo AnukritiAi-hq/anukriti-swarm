@@ -1,0 +1,192 @@
+name: CI
+
+# Runs on every push to main and every PR targeting main.
+#
+# Three jobs gate merging:
+#
+#   test   — full 234-test pytest suite across Python 3.11 and 3.12
+#   lint   — ruff check + ruff format --check (fails PR on format drift)
+#   demos  — explicit flagship demo sweep as a second-tier regression
+#            gate; runs the 7 canonical demos so signature drift shows
+#            up even for contributors who bypass the pytest suite.
+#
+# Regression contract documented in .project-status.md and tracked by
+# tests/integration/test_flagship_signatures.py. Keep this workflow in
+# sync with that contract — if a demo is added, add it to the 'demos'
+# job's matrix here in the same PR.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs on new pushes to the same branch. Matches
+# the pgx-core CI pattern so contributors see consistent behaviour
+# across the platform.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------
+  # test — full pytest suite on the supported Python versions
+  # ---------------------------------------------------------------------
+  #
+  # Matrix covers 3.11 (pyproject minimum) and 3.12 (dev machine).
+  # fail-fast: false lets the full matrix run even if one version
+  # fails, surfacing both versions' issues in a single PR cycle.
+  test:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run full pytest suite
+        # Runs all 234 tests including @pytest.mark.slow integration
+        # tests that subprocess-invoke the flagship demos. Total wall
+        # time ~12s on 3.12 locally; budget 2 minutes for CI overhead.
+        run: pytest tests/ -v --tb=short
+
+      - name: Run legacy pinned star-allele regression
+        # Standalone module, pre-dates the pytest suite. Keeps running
+        # as a belt-and-braces check that infer_phenotype + benchmark
+        # scenarios still agree with the CPIC citations they pin.
+        run: python -m tests.test_star_allele_regression
+
+  # ---------------------------------------------------------------------
+  # lint — progressive ruff adoption (strangler-fig pattern)
+  # ---------------------------------------------------------------------
+  #
+  # ruff check / format are run in two modes:
+  #
+  #   1. HARD GATE on directories that are fully clean today. Failure
+  #      here fails the PR. Any new code in these directories must
+  #      stay clean.
+  #
+  #   2. INFORMATIONAL REPORT on the rest of the codebase. The
+  #      report surfaces the debt count so a reviewer can see
+  #      whether a PR is making things better or worse, but it
+  #      doesn't block merge.
+  #
+  # As directories are cleaned up (in their own cleanup PRs, not
+  # feature PRs), move them from the informational list into the
+  # hard gate. The rule set is declared in pyproject.toml
+  # ([tool.ruff.lint.select]): E / F / I / N / W / UP / B / A / C4 /
+  # SIM / TCH / RUF.
+  #
+  # mypy is declared in requirements.txt + pre-commit but not gated
+  # here yet. Enabling it requires an annotation sweep across the
+  # codebase; tracked as forward work in .project-status.md.
+  lint:
+    name: ruff check + format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install ruff
+        # Pin the same version as pyproject + pre-commit so contributors
+        # get the exact same output locally, in pre-commit, and in CI.
+        run: pip install ruff==0.4.4
+
+      # ------- HARD GATE: tests/ must stay clean -------
+
+      - name: ruff check tests/
+        run: ruff check tests/
+
+      - name: ruff format --check tests/
+        run: ruff format --check tests/
+
+      # ------- INFORMATIONAL: rest of the codebase -------
+      #
+      # These steps print the current debt counts but do not fail
+      # the job. Treat them as a progress tracker during CI adoption.
+      # Promote a directory to the hard gate above once it's clean.
+
+      - name: ruff check . (informational — debt report)
+        run: |
+          echo "::group::ruff check . (non-blocking)"
+          ruff check . || true
+          echo "::endgroup::"
+
+      - name: ruff format --check . (informational — debt report)
+        run: |
+          echo "::group::ruff format --check . (non-blocking)"
+          ruff format --check . || true
+          echo "::endgroup::"
+
+  # ---------------------------------------------------------------------
+  # demos — flagship demo regression sweep
+  # ---------------------------------------------------------------------
+  #
+  # Redundant with tests/integration/test_flagship_signatures.py but
+  # kept separate for two reasons:
+  #
+  #   1. Visibility: each demo's stdout shows up as its own step in
+  #      the CI UI, so a demo that starts failing is immediately
+  #      obvious without digging into pytest output.
+  #   2. Resilience: if someone adds a demo but forgets to add a
+  #      signature test, this job still catches a regression.
+  #
+  # Each demo is timeout-bounded at 60s. Normal wall time <5s per
+  # demo. Keep the list in sync with the signatures documented in
+  # .project-status.md.
+  demos:
+    name: flagship demo sweep
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: showcase
+        run: timeout 60 python -m demos.showcase
+
+      - name: safety_demo
+        run: timeout 60 python -m demos.safety_demo
+
+      - name: interoperability_demo
+        run: timeout 60 python -m demos.interoperability_demo
+
+      - name: evaluation_demo
+        run: timeout 60 python -m demos.evaluation_demo
+
+      - name: evidence_sufficiency_demo
+        run: timeout 60 python -m demos.evidence_sufficiency_demo
+
+      - name: evidence_sufficiency_abstention_demo
+        run: timeout 60 python -m demos.evidence_sufficiency_abstention_demo
+
+      - name: unified_demo
+        run: timeout 60 python -m demos.unified_demo

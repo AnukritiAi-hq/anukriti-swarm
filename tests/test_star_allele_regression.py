@@ -32,7 +32,6 @@ import sys
 
 from rules.phenotype_rules import infer_phenotype
 
-
 # ---------------------------------------------------------------------------
 # Pinned case table
 # ---------------------------------------------------------------------------
@@ -43,40 +42,58 @@ from rules.phenotype_rules import infer_phenotype
 PINNED_CASES: list[tuple[str, str, str, str, str]] = [
     # --- CYP2C19 diplotype-to-phenotype (CPIC 2022 clopidogrel
     #     guideline, Lee et al. PMID:35034351; NCBI NBK84114 Table 2)
-    ("CYP2C19", "*1", "*1", "Normal Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2"),
-    ("CYP2C19", "*1", "*17", "Rapid Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2 (*1/*17 -> RM, not NM)"),
-    ("CYP2C19", "*17", "*17", "Ultrarapid Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2"),
-    ("CYP2C19", "*1", "*2", "Intermediate Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2"),
-    ("CYP2C19", "*2", "*2", "Poor Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2"),
-    ("CYP2C19", "*2", "*17", "Intermediate Metabolizer",
-     "CPIC 2022 clopidogrel guideline Table 2"),
-
+    ("CYP2C19", "*1", "*1", "Normal Metabolizer", "CPIC 2022 clopidogrel guideline Table 2"),
+    (
+        "CYP2C19",
+        "*1",
+        "*17",
+        "Rapid Metabolizer",
+        "CPIC 2022 clopidogrel guideline Table 2 (*1/*17 -> RM, not NM)",
+    ),
+    ("CYP2C19", "*17", "*17", "Ultrarapid Metabolizer", "CPIC 2022 clopidogrel guideline Table 2"),
+    ("CYP2C19", "*1", "*2", "Intermediate Metabolizer", "CPIC 2022 clopidogrel guideline Table 2"),
+    ("CYP2C19", "*2", "*2", "Poor Metabolizer", "CPIC 2022 clopidogrel guideline Table 2"),
+    ("CYP2C19", "*2", "*17", "Intermediate Metabolizer", "CPIC 2022 clopidogrel guideline Table 2"),
     # --- CYP2D6 activity score → phenotype (CPIC 2019 standardization,
     #     Caudle et al. 2020 PMID:31647186; allele functions via CPIC
     #     CYP2D6 allele functionality table)
-    ("CYP2D6", "*1", "*1", "Normal Metabolizer",
-     "CPIC 2019 standardization (score 2.0 -> NM)"),
-    ("CYP2D6", "*1", "*17", "Normal Metabolizer",
-     "CPIC 2019 standardization (score 1.5 -> NM, not IM as pre-2019)"),
-    ("CYP2D6", "*1", "*4", "Intermediate Metabolizer",
-     "CPIC 2019 standardization (score 1.0 -> IM)"),
-    ("CYP2D6", "*4", "*4", "Poor Metabolizer",
-     "CPIC 2019 standardization (score 0 -> PM)"),
-    ("CYP2D6", "*17", "*17", "Intermediate Metabolizer",
-     "CPIC 2019 standardization (score 1.0 -> IM)"),
-    ("CYP2D6", "*1xN", "*1", "Ultrarapid Metabolizer",
-     "CPIC 2019 standardization (score 3.0 -> UM)"),
+    ("CYP2D6", "*1", "*1", "Normal Metabolizer", "CPIC 2019 standardization (score 2.0 -> NM)"),
+    (
+        "CYP2D6",
+        "*1",
+        "*17",
+        "Normal Metabolizer",
+        "CPIC 2019 standardization (score 1.5 -> NM, not IM as pre-2019)",
+    ),
+    (
+        "CYP2D6",
+        "*1",
+        "*4",
+        "Intermediate Metabolizer",
+        "CPIC 2019 standardization (score 1.0 -> IM)",
+    ),
+    ("CYP2D6", "*4", "*4", "Poor Metabolizer", "CPIC 2019 standardization (score 0 -> PM)"),
+    (
+        "CYP2D6",
+        "*17",
+        "*17",
+        "Intermediate Metabolizer",
+        "CPIC 2019 standardization (score 1.0 -> IM)",
+    ),
+    (
+        "CYP2D6",
+        "*1xN",
+        "*1",
+        "Ultrarapid Metabolizer",
+        "CPIC 2019 standardization (score 3.0 -> UM)",
+    ),
 ]
 
 
 # ---------------------------------------------------------------------------
 # Cross-check: benchmark scenarios agree with the rule for *1/*17 cases
 # ---------------------------------------------------------------------------
+
 
 def _check_benchmark_agreement() -> list[str]:
     """Catch drift between benchmark expected_phenotype and the rule.
@@ -105,6 +122,7 @@ def _check_benchmark_agreement() -> list[str]:
 # Runner
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     failures: list[str] = []
 
@@ -122,8 +140,7 @@ def main() -> int:
     total_pinned = len(PINNED_CASES)
     pinned_pass = total_pinned - len(failures)
     print(f"Pinned CPIC cases:       {pinned_pass}/{total_pinned} pass")
-    print(f"Benchmark cross-check:   "
-          f"{'AGREE' if not benchmark_mismatches else 'DRIFT'}")
+    print(f"Benchmark cross-check:   " f"{'AGREE' if not benchmark_mismatches else 'DRIFT'}")
 
     if failures:
         print("\nFailed pinned cases:")
@@ -138,8 +155,7 @@ def main() -> int:
     if failures or benchmark_mismatches:
         return 1
 
-    print("\nOK: all pinned cases pass and benchmark scenarios agree "
-          "with the rule.")
+    print("\nOK: all pinned cases pass and benchmark scenarios agree " "with the rule.")
     return 0
 
 
