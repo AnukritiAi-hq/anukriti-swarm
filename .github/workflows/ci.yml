@@ -110,13 +110,24 @@ jobs:
         # get the exact same output locally, in pre-commit, and in CI.
         run: pip install ruff==0.4.4
 
-      # ------- HARD GATE: tests/ must stay clean -------
+      # ------- HARD GATE: directories that are ruff-clean today -------
+      #
+      # Keep this list in sync with the adoption progress in
+      # .project-status.md. Each new directory promoted to this gate
+      # is a single cleanup PR; don't bundle cleanups with feature
+      # work.
 
       - name: ruff check tests/
         run: ruff check tests/
 
       - name: ruff format --check tests/
         run: ruff format --check tests/
+
+      - name: ruff check core/runtime/
+        run: ruff check core/runtime/
+
+      - name: ruff format --check core/runtime/
+        run: ruff format --check core/runtime/
 
       # ------- INFORMATIONAL: rest of the codebase -------
       #
