@@ -78,9 +78,12 @@ Additional action classes for caller convenience:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 from core.evidence_sufficiency.conflict.agent import (
     ConflictFinding,
@@ -91,7 +94,6 @@ from core.evidence_sufficiency.coverage.claim_coverage import (
     ClaimEvidenceFacet,
     FacetCoverageState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Closed enums
@@ -154,9 +156,7 @@ class UncertaintyReading:
     pathway_count: int
     pathway_bundle_supplied: bool
     correlation_id: str = ""
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict:
         return {
@@ -249,8 +249,7 @@ class UncertaintyScoringEngine:
         # U2 HIGH — missing facet (excluding CONFLICT_FREE, since U1 ate
         # the hard-conflict case already).
         missing_non_conflict = [
-            f for f in coverage.missing_facets
-            if f is not ClaimEvidenceFacet.CONFLICT_FREE
+            f for f in coverage.missing_facets if f is not ClaimEvidenceFacet.CONFLICT_FREE
         ]
         if missing_non_conflict:
             names = ", ".join(f.value for f in missing_non_conflict)
@@ -295,7 +294,8 @@ class UncertaintyScoringEngine:
 
         # U7 MODERATE — exactly 1 uncertain non-core facet (ALLELE or CPIC)
         non_core_uncertain = [
-            f for f in coverage.uncertain_facets
+            f
+            for f in coverage.uncertain_facets
             if f in {ClaimEvidenceFacet.ALLELE, ClaimEvidenceFacet.CPIC}
         ]
         if len(non_core_uncertain) == 1:
@@ -314,11 +314,7 @@ class UncertaintyScoringEngine:
             )
 
         # U9 LOW
-        suffix = (
-            f" ({pathway_count} KG paths)"
-            if pathway_bundle_supplied
-            else " (no KG bundle)"
-        )
+        suffix = f" ({pathway_count} KG paths)" if pathway_bundle_supplied else " (no KG bundle)"
         return (
             UncertaintyScore.LOW,
             "U9",
@@ -358,9 +354,7 @@ class UncertaintyAwareReasoningLayer:
     helper so policy stays consistent.
     """
 
-    engine: UncertaintyScoringEngine = field(
-        default_factory=UncertaintyScoringEngine
-    )
+    engine: UncertaintyScoringEngine = field(default_factory=UncertaintyScoringEngine)
 
     def decide(
         self,
@@ -369,9 +363,7 @@ class UncertaintyAwareReasoningLayer:
         findings: Iterable[ConflictFinding] = (),
         path_bundle: Sequence | None = None,
     ) -> UncertaintyReading:
-        return self.engine.score(
-            coverage, findings=findings, path_bundle=path_bundle
-        )
+        return self.engine.score(coverage, findings=findings, path_bundle=path_bundle)
 
     @staticmethod
     def recommended_action(reading: UncertaintyReading) -> UncertaintyAction:

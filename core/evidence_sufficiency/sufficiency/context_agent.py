@@ -63,7 +63,10 @@ signatures are preserved.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from core.evidence_sufficiency.conflict.agent import (
     ConflictDetectionAgent,
@@ -90,18 +93,10 @@ class ContextSufficiencyAgent:
     level, which keeps scope drift visible.
     """
 
-    analyzer: EvidenceCoverageAnalyzer = field(
-        default_factory=EvidenceCoverageAnalyzer
-    )
-    conflict_detector: ConflictDetectionAgent = field(
-        default_factory=ConflictDetectionAgent
-    )
-    provenance_tracker: ProvenanceCoverageTracker = field(
-        default_factory=ProvenanceCoverageTracker
-    )
-    engine: SufficiencyDecisionEngine = field(
-        default_factory=SufficiencyDecisionEngine
-    )
+    analyzer: EvidenceCoverageAnalyzer = field(default_factory=EvidenceCoverageAnalyzer)
+    conflict_detector: ConflictDetectionAgent = field(default_factory=ConflictDetectionAgent)
+    provenance_tracker: ProvenanceCoverageTracker = field(default_factory=ProvenanceCoverageTracker)
+    engine: SufficiencyDecisionEngine = field(default_factory=SufficiencyDecisionEngine)
 
     # ------------------------------------------------------------------
     # Public API
@@ -133,9 +128,7 @@ class ContextSufficiencyAgent:
         # 2. Conflict detection — only over explicitly-typed claims.
         # If the caller didn't pass any, the detector returns () and
         # CONFLICT_FREE stays at its optimistic default.
-        findings: tuple[ConflictFinding, ...] = self.conflict_detector.detect(
-            conflict_claims or ()
-        )
+        findings: tuple[ConflictFinding, ...] = self.conflict_detector.detect(conflict_claims or ())
 
         # 3. Downgrade CONFLICT_FREE on the coverage analysis.
         coverage = self.conflict_detector.apply_to(coverage, findings)

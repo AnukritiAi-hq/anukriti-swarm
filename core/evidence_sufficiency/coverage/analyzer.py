@@ -78,7 +78,10 @@ any order; no shared mutable state.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from core.evidence_sufficiency.coverage.claim_coverage import (
     ALL_FACETS,
@@ -88,6 +91,13 @@ from core.evidence_sufficiency.coverage.claim_coverage import (
 )
 from core.models.population import SuperPopulation
 
+# The closed anchor table + matcher live in ``core.models.population_mentions``
+# so the retrieval subpackage can share the exact same vocabulary without
+# reaching into a private analyzer symbol. Aliased here under the legacy
+# underscore name so any in-tree import still resolves.
+from core.models.population_mentions import (
+    mentions_population as _mentions_population,
+)
 
 # ---------------------------------------------------------------------------
 # Document-shape adapter
@@ -118,11 +128,11 @@ def _as_doc_dict(doc: Any) -> dict[str, Any] | None:
     # dataclass BiomedicalDocument
     if all(hasattr(doc, k) for k in _REQUIRED_DOC_KEYS):
         return {
-            "doc_id": getattr(doc, "doc_id"),
-            "source": getattr(doc, "source"),
-            "genes": list(getattr(doc, "genes") or []),
-            "drugs": list(getattr(doc, "drugs") or []),
-            "citation_id": getattr(doc, "citation_id"),
+            "doc_id": doc.doc_id,
+            "source": doc.source,
+            "genes": list(doc.genes or []),
+            "drugs": list(doc.drugs or []),
+            "citation_id": doc.citation_id,
             "title": str(getattr(doc, "title", "") or ""),
             "keywords": list(getattr(doc, "keywords", ()) or ()),
         }
@@ -152,16 +162,6 @@ def _source_name(source: Any) -> str:
 # ---------------------------------------------------------------------------
 # Population-mention rules
 # ---------------------------------------------------------------------------
-
-
-# The closed anchor table + matcher live in ``core.models.population_mentions``
-# so the retrieval subpackage can share the exact same vocabulary without
-# reaching into a private analyzer symbol. Aliased here at module scope
-# under the legacy underscore names so any in-tree import still resolves.
-from core.models.population_mentions import (
-    POPULATION_MENTIONS as _POPULATION_MENTIONS,
-    mentions_population as _mentions_population,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +340,7 @@ class EvidenceCoverageAnalyzer:
         return (
             FacetCoverageState.UNCERTAIN,
             (),
-            f"phenotype present but no cpic.* / hla_b.* rule_id attached",
+            "phenotype present but no cpic.* / hla_b.* rule_id attached",
         )
 
     @staticmethod

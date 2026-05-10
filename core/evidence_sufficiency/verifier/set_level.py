@@ -71,7 +71,7 @@ has already produced and applies the table.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from core.evidence_sufficiency.conflict.agent import (
     ConflictFinding,
@@ -89,6 +89,9 @@ from core.evidence_sufficiency.verifier.result import (
     EvidenceVerdict,
     EvidenceVerificationResult,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 
 @dataclass
@@ -120,12 +123,8 @@ class SetLevelEvidenceVerifier:
         """
 
         findings_tuple = tuple(findings)
-        hard_findings = [
-            f for f in findings_tuple if f.severity is ConflictSeverity.HARD
-        ]
-        soft_findings = [
-            f for f in findings_tuple if f.severity is ConflictSeverity.SOFT
-        ]
+        hard_findings = [f for f in findings_tuple if f.severity is ConflictSeverity.HARD]
+        soft_findings = [f for f in findings_tuple if f.severity is ConflictSeverity.SOFT]
 
         pathway_bundle_supplied = path_bundle is not None
         pathway_count = len(path_bundle) if pathway_bundle_supplied else 0
@@ -204,8 +203,10 @@ class SetLevelEvidenceVerifier:
 
         # V5 — INSUFFICIENT: any other MISSING facet.
         other_missing = [
-            f for f in coverage.missing_facets
-            if f not in {
+            f
+            for f in coverage.missing_facets
+            if f
+            not in {
                 ClaimEvidenceFacet.PHENOTYPE,
                 ClaimEvidenceFacet.RECOMMENDATION,
             }
@@ -237,8 +238,10 @@ class SetLevelEvidenceVerifier:
         # V8 — UNCERTAIN: any other UNCERTAIN facet (excluding CONFLICT_FREE,
         # which V9 handles separately so the rationale names the soft conflict).
         other_uncertain = [
-            f for f in coverage.uncertain_facets
-            if f not in {
+            f
+            for f in coverage.uncertain_facets
+            if f
+            not in {
                 ClaimEvidenceFacet.POPULATION,
                 ClaimEvidenceFacet.CONFLICT_FREE,
             }
@@ -252,10 +255,7 @@ class SetLevelEvidenceVerifier:
             )
 
         # V9 — UNCERTAIN: CONFLICT_FREE uncertain (soft conflict present).
-        if (
-            states[ClaimEvidenceFacet.CONFLICT_FREE]
-            is FacetCoverageState.UNCERTAIN
-        ):
+        if states[ClaimEvidenceFacet.CONFLICT_FREE] is FacetCoverageState.UNCERTAIN:
             reasons = "; ".join(f.reason for f in soft_findings) or "soft conflict"
             return (
                 EvidenceVerdict.UNCERTAIN,

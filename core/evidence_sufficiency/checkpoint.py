@@ -38,10 +38,11 @@ Flagship demo signatures are unchanged.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
-from core.evidence_sufficiency.conflict.agent import ConflictFinding
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
 from core.evidence_sufficiency.sufficiency.context_agent import (
     ContextSufficiencyAgent,
 )
@@ -65,7 +66,6 @@ from core.evidence_sufficiency.verifier.result import (
 from core.evidence_sufficiency.verifier.set_level import (
     SetLevelEvidenceVerifier,
 )
-
 
 # ---------------------------------------------------------------------------
 # Result record
@@ -114,12 +114,8 @@ class CheckpointResult:
             # full ClaimCoverageAnalysis lives in the checkpoint's
             # SufficiencyReport, but dashboards want the top-level view.
             "coverage_ratio": self.report.coverage.coverage_ratio,
-            "missing_facets": [
-                f.value for f in self.report.coverage.missing_facets
-            ],
-            "uncertain_facets": [
-                f.value for f in self.report.coverage.uncertain_facets
-            ],
+            "missing_facets": [f.value for f in self.report.coverage.missing_facets],
+            "uncertain_facets": [f.value for f in self.report.coverage.uncertain_facets],
         }
 
 
@@ -139,15 +135,9 @@ class SufficiencyCheckpoint:
         result = checkpoint.evaluate(run, retrieval_docs=..., ...)
     """
 
-    context_agent: ContextSufficiencyAgent = field(
-        default_factory=ContextSufficiencyAgent
-    )
-    set_level_verifier: SetLevelEvidenceVerifier = field(
-        default_factory=SetLevelEvidenceVerifier
-    )
-    uncertainty_engine: UncertaintyScoringEngine = field(
-        default_factory=UncertaintyScoringEngine
-    )
+    context_agent: ContextSufficiencyAgent = field(default_factory=ContextSufficiencyAgent)
+    set_level_verifier: SetLevelEvidenceVerifier = field(default_factory=SetLevelEvidenceVerifier)
+    uncertainty_engine: UncertaintyScoringEngine = field(default_factory=UncertaintyScoringEngine)
     bias_detector: PopulationEvidenceBiasDetector = field(
         default_factory=PopulationEvidenceBiasDetector
     )
@@ -346,6 +336,7 @@ class SufficiencyCheckpoint:
         from core.evidence_sufficiency.uncertainty.engine import (
             UncertaintyAction,
         )
+
         if uncertainty.action is UncertaintyAction.BLOCK:
             return (
                 False,

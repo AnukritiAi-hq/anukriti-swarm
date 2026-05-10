@@ -66,15 +66,15 @@ in commit 13 applies a deterministic rule table on top.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from core.evidence_sufficiency.conflict.agent import ConflictFinding
-from core.evidence_sufficiency.coverage.claim_coverage import (
-    ClaimCoverageAnalysis,
-)
-
+if TYPE_CHECKING:
+    from core.evidence_sufficiency.conflict.agent import ConflictFinding
+    from core.evidence_sufficiency.coverage.claim_coverage import (
+        ClaimCoverageAnalysis,
+    )
 
 # ---------------------------------------------------------------------------
 # Closed-enum outcome
@@ -131,9 +131,7 @@ class EvidenceVerificationResult:
     pathway_count: int
     evidence_refs: tuple[str, ...]
     correlation_id: str = ""
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def allows_synthesis(self) -> bool:

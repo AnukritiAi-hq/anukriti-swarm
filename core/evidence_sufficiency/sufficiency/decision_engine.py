@@ -76,9 +76,9 @@ No configuration knobs. A new decision class is a code change.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Iterable
+from typing import TYPE_CHECKING
 
 from core.evidence_sufficiency.conflict.agent import (
     ConflictFinding,
@@ -89,10 +89,13 @@ from core.evidence_sufficiency.coverage.claim_coverage import (
     ClaimEvidenceFacet,
     FacetCoverageState,
 )
-from core.evidence_sufficiency.coverage.provenance_tracker import (
-    ProvenanceCoverageReport,
-)
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from core.evidence_sufficiency.coverage.provenance_tracker import (
+        ProvenanceCoverageReport,
+    )
 
 # ---------------------------------------------------------------------------
 # Closed-enum decisions
@@ -146,9 +149,7 @@ class SufficiencyReport:
     provenance: ProvenanceCoverageReport | None
     findings: tuple[ConflictFinding, ...]
     correlation_id: str = ""
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def is_blocking(self) -> bool:
@@ -293,14 +294,15 @@ class SufficiencyDecisionEngine:
         if states[ClaimEvidenceFacet.POPULATION] is FacetCoverageState.UNCERTAIN:
             return (
                 SufficiencyDecision.DOWNGRADE,
-                f"R9: {coverage.population.value} population support weak — "
-                f"confidence lowered",
+                f"R9: {coverage.population.value} population support weak — " f"confidence lowered",
             )
 
         # R10 — any remaining UNCERTAIN
         other_uncertain = [
-            f for f in coverage.uncertain_facets
-            if f not in {
+            f
+            for f in coverage.uncertain_facets
+            if f
+            not in {
                 ClaimEvidenceFacet.RECOMMENDATION,
                 ClaimEvidenceFacet.POPULATION,
                 ClaimEvidenceFacet.CONFLICT_FREE,

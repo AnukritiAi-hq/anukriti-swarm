@@ -43,11 +43,13 @@ report has a ``coverage_ratio`` property symmetric with
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Iterable, Mapping
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 # ---------------------------------------------------------------------------
 # Closed-enum dimensions
@@ -110,32 +112,23 @@ class ProvenanceCoverageReport:
     dimension_states: Mapping[ProvenanceDimension, DimensionState]
     offenders: Mapping[ProvenanceDimension, tuple[str, ...]]
     reasons: Mapping[ProvenanceDimension, str]
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def coverage_ratio(self) -> float:
         covered = sum(
-            1
-            for state in self.dimension_states.values()
-            if state is DimensionState.COVERED
+            1 for state in self.dimension_states.values() if state is DimensionState.COVERED
         )
         return round(covered / len(ALL_DIMENSIONS), 4)
 
     @property
     def is_complete(self) -> bool:
-        return all(
-            self.dimension_states[d] is DimensionState.COVERED
-            for d in ALL_DIMENSIONS
-        )
+        return all(self.dimension_states[d] is DimensionState.COVERED for d in ALL_DIMENSIONS)
 
     @property
     def missing_dimensions(self) -> tuple[ProvenanceDimension, ...]:
         return tuple(
-            d
-            for d in ALL_DIMENSIONS
-            if self.dimension_states[d] is DimensionState.MISSING
+            d for d in ALL_DIMENSIONS if self.dimension_states[d] is DimensionState.MISSING
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -198,12 +191,12 @@ def _as_record_dict(rec: Any) -> dict[str, Any] | None:
     # ProvenanceRecord dataclass
     if all(hasattr(rec, k) for k in _REQUIRED_RECORD_KEYS):
         return {
-            "claim_id": getattr(rec, "claim_id"),
-            "generating_agent": getattr(rec, "generating_agent"),
-            "rule_id": getattr(rec, "rule_id"),
-            "correlation_id": getattr(rec, "correlation_id"),
-            "evidence_sources": list(getattr(rec, "evidence_sources") or []),
-            "parent_claim_id": getattr(rec, "parent_claim_id"),
+            "claim_id": rec.claim_id,
+            "generating_agent": rec.generating_agent,
+            "rule_id": rec.rule_id,
+            "correlation_id": rec.correlation_id,
+            "evidence_sources": list(rec.evidence_sources or []),
+            "parent_claim_id": rec.parent_claim_id,
             "origin": getattr(rec, "origin", "deterministic"),
         }
     return None
@@ -261,8 +254,7 @@ class ProvenanceCoverageTracker:
         # sometimes pass the full store; we only audit the matching run).
         if correlation_id:
             records_list = [
-                r for r in records_list
-                if str(r.get("correlation_id", "")) == correlation_id
+                r for r in records_list if str(r.get("correlation_id", "")) == correlation_id
             ]
 
         if not records_list:
@@ -270,9 +262,7 @@ class ProvenanceCoverageTracker:
 
         id_set = {str(r["claim_id"]) for r in records_list}
 
-        dim_offenders: dict[ProvenanceDimension, list[str]] = {
-            d: [] for d in ALL_DIMENSIONS
-        }
+        dim_offenders: dict[ProvenanceDimension, list[str]] = {d: [] for d in ALL_DIMENSIONS}
         for r in records_list:
             cid = str(r["claim_id"])
             if not str(r.get("rule_id", "")).strip():
@@ -285,11 +275,8 @@ class ProvenanceCoverageTracker:
             # evidence check — skip generative unless strict mode
             origin = str(r.get("origin", "deterministic"))
             must_check_evidence = origin != "generative" or self.strict_generative_evidence
-            if must_check_evidence:
-                if not list(r.get("evidence_sources") or []):
-                    dim_offenders[
-                        ProvenanceDimension.EVIDENCE_RESOLVABILITY
-                    ].append(cid)
+            if must_check_evidence and not list(r.get("evidence_sources") or []):
+                dim_offenders[ProvenanceDimension.EVIDENCE_RESOLVABILITY].append(cid)
 
         states: dict[ProvenanceDimension, DimensionState] = {}
         reasons: dict[ProvenanceDimension, str] = {}
@@ -297,9 +284,7 @@ class ProvenanceCoverageTracker:
             offenders = dim_offenders[dim]
             if offenders:
                 states[dim] = DimensionState.MISSING
-                reasons[dim] = (
-                    f"{len(offenders)}/{len(records_list)} record(s) missing {dim.value}"
-                )
+                reasons[dim] = f"{len(offenders)}/{len(records_list)} record(s) missing {dim.value}"
             else:
                 states[dim] = DimensionState.COVERED
                 reasons[dim] = f"all {len(records_list)} record(s) carry {dim.value}"
@@ -308,9 +293,7 @@ class ProvenanceCoverageTracker:
             correlation_id=correlation_id or str(records_list[0].get("correlation_id", "")),
             total_records=len(records_list),
             dimension_states=MappingProxyType(states),
-            offenders=MappingProxyType(
-                {d: tuple(dim_offenders[d]) for d in ALL_DIMENSIONS}
-            ),
+            offenders=MappingProxyType({d: tuple(dim_offenders[d]) for d in ALL_DIMENSIONS}),
             reasons=MappingProxyType(reasons),
         )
 
@@ -324,10 +307,7 @@ class ProvenanceCoverageTracker:
 
         states = {d: DimensionState.MISSING for d in ALL_DIMENSIONS}
         offenders = {d: () for d in ALL_DIMENSIONS}
-        reasons = {
-            d: "no provenance records for this correlation_id"
-            for d in ALL_DIMENSIONS
-        }
+        reasons = {d: "no provenance records for this correlation_id" for d in ALL_DIMENSIONS}
         return ProvenanceCoverageReport(
             correlation_id=correlation_id,
             total_records=0,

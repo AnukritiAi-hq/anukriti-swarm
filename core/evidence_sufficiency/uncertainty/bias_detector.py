@@ -71,7 +71,6 @@ from core.evidence_sufficiency.coverage.claim_coverage import (
 )
 from core.models.population import SuperPopulation
 
-
 # ---------------------------------------------------------------------------
 # Closed enum
 # ---------------------------------------------------------------------------
@@ -177,51 +176,49 @@ class PopulationEvidenceBiasDetector:
             eur_ev = len(pop_indexer.evidence_for(SuperPopulation.EUR))
             target_ev = len(pop_indexer.evidence_for(target))
             if target_ev < self.min_target_evidence and eur_ev > 0:
-                findings.append(BiasFinding(
-                    kind=BiasKind.EUROCENTRIC_IMBALANCE,
-                    target=target,
-                    reason=(
-                        f"{target.value} evidence count {target_ev} below "
-                        f"minimum {self.min_target_evidence} while EUR "
-                        f"evidence count is {eur_ev}"
-                    ),
-                    measurements={
-                        "target_evidence_count": target_ev,
-                        "eur_evidence_count": eur_ev,
-                        "min_target_evidence": self.min_target_evidence,
-                    },
-                ))
+                findings.append(
+                    BiasFinding(
+                        kind=BiasKind.EUROCENTRIC_IMBALANCE,
+                        target=target,
+                        reason=(
+                            f"{target.value} evidence count {target_ev} below "
+                            f"minimum {self.min_target_evidence} while EUR "
+                            f"evidence count is {eur_ev}"
+                        ),
+                        measurements={
+                            "target_evidence_count": target_ev,
+                            "eur_evidence_count": eur_ev,
+                            "min_target_evidence": self.min_target_evidence,
+                        },
+                    )
+                )
 
         # Rule 2 — ANCESTRY_SCARCITY
         if pop_indexer is not None:
-            counts = {
-                pop: len(pop_indexer.alleles_for(pop))
-                for pop in SuperPopulation
-            }
+            counts = {pop: len(pop_indexer.alleles_for(pop)) for pop in SuperPopulation}
             max_count = max(counts.values(), default=0)
             target_count = counts.get(target, 0)
             if max_count > 0:
                 ratio = target_count / max_count
                 if ratio < self.scarcity_ratio:
-                    findings.append(BiasFinding(
-                        kind=BiasKind.ANCESTRY_SCARCITY,
-                        target=target,
-                        reason=(
-                            f"{target.value} observed in {target_count} "
-                            f"allele(s); max population has {max_count} "
-                            f"(ratio {ratio:.2f} < {self.scarcity_ratio:.2f})"
-                        ),
-                        measurements={
-                            "target_allele_count": target_count,
-                            "max_allele_count": max_count,
-                            "ratio": round(ratio, 4),
-                            "scarcity_ratio": self.scarcity_ratio,
-                            "all_counts": {
-                                pop.value: counts[pop]
-                                for pop in SuperPopulation
+                    findings.append(
+                        BiasFinding(
+                            kind=BiasKind.ANCESTRY_SCARCITY,
+                            target=target,
+                            reason=(
+                                f"{target.value} observed in {target_count} "
+                                f"allele(s); max population has {max_count} "
+                                f"(ratio {ratio:.2f} < {self.scarcity_ratio:.2f})"
+                            ),
+                            measurements={
+                                "target_allele_count": target_count,
+                                "max_allele_count": max_count,
+                                "ratio": round(ratio, 4),
+                                "scarcity_ratio": self.scarcity_ratio,
+                                "all_counts": {pop.value: counts[pop] for pop in SuperPopulation},
                             },
-                        },
-                    ))
+                        )
+                    )
 
         # Rule 3 — UNSUPPORTED_EXTRAPOLATION
         pop_state = coverage.facet_states[ClaimEvidenceFacet.POPULATION]
@@ -230,24 +227,26 @@ class PopulationEvidenceBiasDetector:
             if pop_indexer is not None:
                 target_has_freq_data = len(pop_indexer.alleles_for(target)) > 0
             if not target_has_freq_data:
-                findings.append(BiasFinding(
-                    kind=BiasKind.UNSUPPORTED_EXTRAPOLATION,
-                    target=target,
-                    reason=(
-                        f"POPULATION facet is UNCERTAIN and no "
-                        f"frequency data observed for {target.value}; "
-                        f"extrapolating from non-{target.value} evidence "
-                        f"is unsupported"
-                    ),
-                    measurements={
-                        "pop_indexer_supplied": pop_indexer is not None,
-                        "target_allele_count_in_kg": (
-                            len(pop_indexer.alleles_for(target))
-                            if pop_indexer is not None
-                            else 0
+                findings.append(
+                    BiasFinding(
+                        kind=BiasKind.UNSUPPORTED_EXTRAPOLATION,
+                        target=target,
+                        reason=(
+                            f"POPULATION facet is UNCERTAIN and no "
+                            f"frequency data observed for {target.value}; "
+                            f"extrapolating from non-{target.value} evidence "
+                            f"is unsupported"
                         ),
-                    },
-                ))
+                        measurements={
+                            "pop_indexer_supplied": pop_indexer is not None,
+                            "target_allele_count_in_kg": (
+                                len(pop_indexer.alleles_for(target))
+                                if pop_indexer is not None
+                                else 0
+                            ),
+                        },
+                    )
+                )
 
         findings.sort(key=lambda f: (f.kind.value, f.reason))
         return tuple(findings)

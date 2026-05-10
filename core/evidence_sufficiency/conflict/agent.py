@@ -80,14 +80,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from core.evidence_sufficiency.coverage.claim_coverage import (
     ClaimCoverageAnalysis,
     ClaimEvidenceFacet,
     FacetCoverageState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Closed enums
@@ -147,20 +149,34 @@ _COMPATIBLE_ACTION_PAIRS: frozenset[frozenset[RecommendationAction]] = frozenset
 # substring. Closed set — adding a new action family is a code change.
 _ACTION_KEYWORDS: dict[RecommendationAction, tuple[str, ...]] = {
     RecommendationAction.CONTRAINDICATED: (
-        "contraindicated", "contraindication", "do not use",
-        "do not prescribe", "must not", "never prescribe",
+        "contraindicated",
+        "contraindication",
+        "do not use",
+        "do not prescribe",
+        "must not",
+        "never prescribe",
     ),
     RecommendationAction.AVOID: (
-        "avoid", "do not give", "withhold",
+        "avoid",
+        "do not give",
+        "withhold",
     ),
     RecommendationAction.CONSIDER_ALT: (
-        "consider alternative", "alternative", "prasugrel",
-        "ticagrelor", "morphine",  # explicit alt-drug mentions
-        "consider ", "use alternative",
+        "consider alternative",
+        "alternative",
+        "prasugrel",
+        "ticagrelor",
+        "morphine",  # explicit alt-drug mentions
+        "consider ",
+        "use alternative",
     ),
     RecommendationAction.USE: (
-        "use ", "prescribe ", "initiate ", "give ",
-        "standard dose", "normal dose",
+        "use ",
+        "prescribe ",
+        "initiate ",
+        "give ",
+        "standard dose",
+        "normal dose",
     ),
 }
 
@@ -312,9 +328,7 @@ class ConflictDetectionAgent:
         reason_parts = [f"{f.kind.value}: {f.reason}" for f in findings_list]
         reason = "; ".join(reason_parts)
 
-        new_state = (
-            FacetCoverageState.MISSING if any_hard else FacetCoverageState.UNCERTAIN
-        )
+        new_state = FacetCoverageState.MISSING if any_hard else FacetCoverageState.UNCERTAIN
         return analysis.with_facet(
             ClaimEvidenceFacet.CONFLICT_FREE,
             state=new_state,
@@ -365,15 +379,11 @@ class ConflictDetectionAgent:
         findings: list[ConflictFinding] = []
         for key, group in groups.items():
             phenos = {
-                str(i.get("phenotype", "")).strip().lower()
-                for i in group
-                if i.get("phenotype")
+                str(i.get("phenotype", "")).strip().lower() for i in group if i.get("phenotype")
             }
             if len(phenos) > 1:
                 source_ids = tuple(
-                    sorted(
-                        {str(i.get("source_id", "")) for i in group if i.get("source_id")}
-                    )
+                    sorted({str(i.get("source_id", "")) for i in group if i.get("source_id")})
                 )
                 findings.append(
                     ConflictFinding(
@@ -406,10 +416,7 @@ class ConflictDetectionAgent:
 
         findings: list[ConflictFinding] = []
         for key, group in groups.items():
-            actions = [
-                _classify_action(str(i.get("action_text", "")))
-                for i in group
-            ]
+            actions = [_classify_action(str(i.get("action_text", ""))) for i in group]
             actions_set = {a for a in actions if a is not RecommendationAction.UNKNOWN}
             if len(actions_set) < 2:
                 continue
@@ -427,9 +434,7 @@ class ConflictDetectionAgent:
                     break
             if clash:
                 source_ids = tuple(
-                    sorted(
-                        {str(i.get("source_id", "")) for i in group if i.get("source_id")}
-                    )
+                    sorted({str(i.get("source_id", "")) for i in group if i.get("source_id")})
                 )
                 findings.append(
                     ConflictFinding(

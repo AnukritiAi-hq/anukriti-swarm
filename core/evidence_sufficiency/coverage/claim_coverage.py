@@ -81,13 +81,15 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any
 
-from core.models.population import SuperPopulation
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
+    from core.models.population import SuperPopulation
 
 # ---------------------------------------------------------------------------
 # Closed enums — scope firewall at the type boundary
@@ -199,9 +201,7 @@ class ClaimCoverageAnalysis:
 
     claim_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     correlation_id: str = ""
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -216,7 +216,7 @@ class ClaimCoverageAnalysis:
         genotype: str,
         population: SuperPopulation,
         correlation_id: str = "",
-    ) -> "ClaimCoverageAnalysis":
+    ) -> ClaimCoverageAnalysis:
         """Build an all-MISSING analysis. Used as the starting point
         for the ``EvidenceCoverageAnalyzer``'s accumulation pass
         (commit 3)."""
@@ -224,12 +224,8 @@ class ClaimCoverageAnalysis:
         states: dict[ClaimEvidenceFacet, FacetCoverageState] = {
             facet: FacetCoverageState.MISSING for facet in ALL_FACETS
         }
-        refs: dict[ClaimEvidenceFacet, tuple[str, ...]] = {
-            facet: () for facet in ALL_FACETS
-        }
-        reasons: dict[ClaimEvidenceFacet, str] = {
-            facet: "" for facet in ALL_FACETS
-        }
+        refs: dict[ClaimEvidenceFacet, tuple[str, ...]] = {facet: () for facet in ALL_FACETS}
+        reasons: dict[ClaimEvidenceFacet, str] = {facet: "" for facet in ALL_FACETS}
         return cls(
             drug=drug,
             gene=gene,
@@ -248,7 +244,7 @@ class ClaimCoverageAnalysis:
         state: FacetCoverageState,
         evidence_refs: tuple[str, ...] = (),
         reason: str = "",
-    ) -> "ClaimCoverageAnalysis":
+    ) -> ClaimCoverageAnalysis:
         """Return a new analysis with one facet replaced.
 
         Preserves ``claim_id`` + ``correlation_id`` + ``created_at``
@@ -258,9 +254,7 @@ class ClaimCoverageAnalysis:
         """
 
         if not isinstance(facet, ClaimEvidenceFacet):  # defensive; enum enforces
-            raise TypeError(
-                f"facet must be ClaimEvidenceFacet, got {type(facet).__name__}"
-            )
+            raise TypeError(f"facet must be ClaimEvidenceFacet, got {type(facet).__name__}")
 
         new_states = dict(self.facet_states)
         new_refs = dict(self.facet_evidence_refs)
@@ -298,9 +292,7 @@ class ClaimCoverageAnalysis:
         """
 
         covered = sum(
-            1
-            for state in self.facet_states.values()
-            if state is FacetCoverageState.COVERED
+            1 for state in self.facet_states.values() if state is FacetCoverageState.COVERED
         )
         return round(covered / len(ALL_FACETS), 4)
 
@@ -308,19 +300,14 @@ class ClaimCoverageAnalysis:
     def is_complete(self) -> bool:
         """True iff every one of the six facets is COVERED."""
 
-        return all(
-            self.facet_states[facet] is FacetCoverageState.COVERED
-            for facet in ALL_FACETS
-        )
+        return all(self.facet_states[facet] is FacetCoverageState.COVERED for facet in ALL_FACETS)
 
     @property
     def missing_facets(self) -> tuple[ClaimEvidenceFacet, ...]:
         """Facets whose state is MISSING, in ``ALL_FACETS`` order."""
 
         return tuple(
-            facet
-            for facet in ALL_FACETS
-            if self.facet_states[facet] is FacetCoverageState.MISSING
+            facet for facet in ALL_FACETS if self.facet_states[facet] is FacetCoverageState.MISSING
         )
 
     @property

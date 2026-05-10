@@ -67,7 +67,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -83,7 +83,7 @@ class RetrievalRoundRecord:
 
     round_index: int
     strategies: tuple[str, ...]
-    stop_signal: str              # 'stop' | 'fetch_more' | 'abort'
+    stop_signal: str  # 'stop' | 'fetch_more' | 'abort'
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,17 +106,15 @@ class EvidenceSufficiencyTrace:
 
     trace_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     correlation_id: str = ""
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Brief req #22 — the 7 tracked dimensions.
     retrieved_evidence: tuple[str, ...] = ()
-    graph_paths: tuple[dict[str, Any], ...] = ()   # GraphPath.to_dict()
-    missing_hops: tuple[str, ...] = ()             # facet.value strings
+    graph_paths: tuple[dict[str, Any], ...] = ()  # GraphPath.to_dict()
+    missing_hops: tuple[str, ...] = ()  # facet.value strings
     uncertainty_transitions: tuple[str, ...] = ()  # UncertaintyScore.value
     retrieval_loops: tuple[RetrievalRoundRecord, ...] = ()
-    sufficiency_decisions: tuple[str, ...] = ()    # SufficiencyDecision.value
+    sufficiency_decisions: tuple[str, ...] = ()  # SufficiencyDecision.value
     escalation_events: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
@@ -124,7 +122,7 @@ class EvidenceSufficiencyTrace:
     # ------------------------------------------------------------------
 
     @classmethod
-    def empty(cls, *, correlation_id: str = "") -> "EvidenceSufficiencyTrace":
+    def empty(cls, *, correlation_id: str = "") -> EvidenceSufficiencyTrace:
         """Fresh trace for a new run."""
 
         return cls(correlation_id=correlation_id)
@@ -133,7 +131,7 @@ class EvidenceSufficiencyTrace:
     # Record builders — each returns a new trace preserving identity
     # ------------------------------------------------------------------
 
-    def record_evidence(self, refs: tuple[str, ...]) -> "EvidenceSufficiencyTrace":
+    def record_evidence(self, refs: tuple[str, ...]) -> EvidenceSufficiencyTrace:
         """Append evidence ids; dedup against what's already recorded.
 
         Stable ordering: existing refs retain their order; new refs
@@ -154,18 +152,14 @@ class EvidenceSufficiencyTrace:
             return self
         return replace(self, retrieved_evidence=self.retrieved_evidence + tuple(new))
 
-    def record_graph_paths(
-        self, paths: tuple[dict[str, Any], ...]
-    ) -> "EvidenceSufficiencyTrace":
+    def record_graph_paths(self, paths: tuple[dict[str, Any], ...]) -> EvidenceSufficiencyTrace:
         """Append serialized GraphPath dicts. No dedup — paths are ordered."""
 
         if not paths:
             return self
         return replace(self, graph_paths=self.graph_paths + tuple(paths))
 
-    def record_missing_hops(
-        self, hops: tuple[str, ...]
-    ) -> "EvidenceSufficiencyTrace":
+    def record_missing_hops(self, hops: tuple[str, ...]) -> EvidenceSufficiencyTrace:
         """Replace missing_hops — this is a snapshot, not an accumulation.
 
         Rationale: missing hops are the STATE at the point the sufficiency
@@ -176,16 +170,14 @@ class EvidenceSufficiencyTrace:
 
         return replace(self, missing_hops=tuple(hops))
 
-    def record_uncertainty(
-        self, score_value: str
-    ) -> "EvidenceSufficiencyTrace":
+    def record_uncertainty(self, score_value: str) -> EvidenceSufficiencyTrace:
         """Append an uncertainty tier to the transition history."""
 
         if not score_value:
             return self
         return replace(
             self,
-            uncertainty_transitions=self.uncertainty_transitions + (score_value,),
+            uncertainty_transitions=(*self.uncertainty_transitions, score_value),
         )
 
     def record_retrieval_loop(
@@ -194,7 +186,7 @@ class EvidenceSufficiencyTrace:
         round_index: int,
         strategies: tuple[str, ...],
         stop_signal: str,
-    ) -> "EvidenceSufficiencyTrace":
+    ) -> EvidenceSufficiencyTrace:
         """Append one retrieval-round summary."""
 
         entry = RetrievalRoundRecord(
@@ -202,28 +194,24 @@ class EvidenceSufficiencyTrace:
             strategies=tuple(str(s) for s in strategies),
             stop_signal=str(stop_signal),
         )
-        return replace(self, retrieval_loops=self.retrieval_loops + (entry,))
+        return replace(self, retrieval_loops=(*self.retrieval_loops, entry))
 
-    def record_sufficiency_decision(
-        self, decision_value: str
-    ) -> "EvidenceSufficiencyTrace":
+    def record_sufficiency_decision(self, decision_value: str) -> EvidenceSufficiencyTrace:
         """Append a sufficiency decision to the decision history."""
 
         if not decision_value:
             return self
         return replace(
             self,
-            sufficiency_decisions=self.sufficiency_decisions + (decision_value,),
+            sufficiency_decisions=(*self.sufficiency_decisions, decision_value),
         )
 
-    def record_escalation(self, action: str) -> "EvidenceSufficiencyTrace":
+    def record_escalation(self, action: str) -> EvidenceSufficiencyTrace:
         """Append an escalation-action label (free-form string)."""
 
         if not action:
             return self
-        return replace(
-            self, escalation_events=self.escalation_events + (str(action),)
-        )
+        return replace(self, escalation_events=(*self.escalation_events, str(action)))
 
     # ------------------------------------------------------------------
     # Derived / helpers
@@ -259,11 +247,7 @@ class EvidenceSufficiencyTrace:
     def final_uncertainty(self) -> str:
         """Last uncertainty tier recorded, or empty string if none."""
 
-        return (
-            self.uncertainty_transitions[-1]
-            if self.uncertainty_transitions
-            else ""
-        )
+        return self.uncertainty_transitions[-1] if self.uncertainty_transitions else ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
