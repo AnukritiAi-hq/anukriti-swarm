@@ -135,6 +135,12 @@ jobs:
       - name: ruff format --check core/evidence_sufficiency/
         run: ruff format --check core/evidence_sufficiency/
 
+      - name: ruff check interoperability/
+        run: ruff check interoperability/
+
+      - name: ruff format --check interoperability/
+        run: ruff format --check interoperability/
+
       # ------- INFORMATIONAL: rest of the codebase -------
       #
       # These steps print the current debt counts but do not fail
