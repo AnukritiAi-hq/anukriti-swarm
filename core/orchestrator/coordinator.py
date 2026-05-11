@@ -37,14 +37,16 @@ with stubs (a fake pipeline runner, a fake AI client).
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from ai.gemini.client import AIClient
 from ai.prompts.templates import (
     orchestration_comparative,
     orchestration_synthesis,
 )
+
 from core.orchestrator.boundary import (
     DEFAULT_BOUNDARY,
     GenerativeAction,
@@ -61,8 +63,10 @@ from core.orchestrator.context import (
     SwarmExecutionContext,
     VerificationState,
 )
-from core.orchestrator.router import RoutingResult
 
+if TYPE_CHECKING:
+    from core.evidence_sufficiency.checkpoint import SufficiencyCheckpoint
+    from core.orchestrator.router import RoutingResult
 
 # Signature of the deterministic pipeline entry point. Keeping it as a
 # ``Callable`` alias means tests can swap in a fake without importing
@@ -124,7 +128,7 @@ class ExecutionCoordinator:
         boundary: GenerativeBoundary | None = None,
         pipeline_runner: PipelineRunner | None = None,
         conflict_resolver: ConflictResolver | None = None,
-        sufficiency_checkpoint: "SufficiencyCheckpoint | None" = None,
+        sufficiency_checkpoint: SufficiencyCheckpoint | None = None,
     ) -> None:
         self.ai = ai_client or _default_ai_client()
         self.boundary = boundary or DEFAULT_BOUNDARY
@@ -139,9 +143,7 @@ class ExecutionCoordinator:
     # Public entry point
     # ------------------------------------------------------------------
 
-    def execute(
-        self, ctx: SwarmExecutionContext, routing: RoutingResult
-    ) -> CoordinationResult:
+    def execute(self, ctx: SwarmExecutionContext, routing: RoutingResult) -> CoordinationResult:
         """Run every planned action in order.
 
         Side effects:
@@ -176,9 +178,7 @@ class ExecutionCoordinator:
                 trace,
                 reason=f"verification verdict={ctx.verification_state.value}",
             )
-            result.escalation_reason = (
-                f"verification_state={ctx.verification_state.value}"
-            )
+            result.escalation_reason = f"verification_state={ctx.verification_state.value}"
             result.duration_ms = (time.perf_counter() - wall) * 1000
             return result
 
@@ -197,10 +197,11 @@ class ExecutionCoordinator:
         # demo signatures are unchanged. When active, it aggregates
         # coverage + conflict + uncertainty + bias + set-level verdict
         # and can block synthesis with a specific escalation reason.
-        if self.sufficiency_checkpoint is not None:
-            if not self._run_sufficiency_checkpoint(ctx, result):
-                result.duration_ms = (time.perf_counter() - wall) * 1000
-                return result
+        if self.sufficiency_checkpoint is not None and not self._run_sufficiency_checkpoint(
+            ctx, result
+        ):
+            result.duration_ms = (time.perf_counter() - wall) * 1000
+            return result
 
         # 4. Comparative analysis (deterministic aggregation)
         if any(d.step.action == "comparative_analysis" for d in routing.decisions):
@@ -220,9 +221,7 @@ class ExecutionCoordinator:
     # Step 2.5 — Cross-run conflict resolution
     # ------------------------------------------------------------------
 
-    def _resolve_conflicts(
-        self, ctx: SwarmExecutionContext, result: CoordinationResult
-    ) -> None:
+    def _resolve_conflicts(self, ctx: SwarmExecutionContext, result: CoordinationResult) -> None:
         """Run the conflict resolver and append a trace step.
 
         Populates ``result.resolution``. BLOCK tier is honored by the
@@ -328,8 +327,7 @@ class ExecutionCoordinator:
             return True
 
         reason = (
-            f"sufficiency checkpoint blocked synthesis: "
-            f"{checkpoint_result.blocking_reason}"
+            f"sufficiency checkpoint blocked synthesis: " f"{checkpoint_result.blocking_reason}"
         )
         self._escalate(ctx, trace, reason=reason)
         result.escalation_reason = reason
@@ -339,9 +337,7 @@ class ExecutionCoordinator:
     # Step 1 — Pipeline execution
     # ------------------------------------------------------------------
 
-    def _execute_pipeline(
-        self, ctx: SwarmExecutionContext, result: CoordinationResult
-    ) -> bool:
+    def _execute_pipeline(self, ctx: SwarmExecutionContext, result: CoordinationResult) -> bool:
         """Run one deterministic pipeline per population (fan-out if comparative).
 
         Returns True on success, False if *all* runs errored (fatal).
@@ -425,13 +421,11 @@ class ExecutionCoordinator:
 
         if ctx.populations:
             return [
-                {"label": f"pop={p}", "seed_state": _seed(p, ctx.drug)}
-                for p in ctx.populations
+                {"label": f"pop={p}", "seed_state": _seed(p, ctx.drug)} for p in ctx.populations
             ]
         if ctx.drugs:
             return [
-                {"label": f"drug={d}", "seed_state": _seed(ctx.population, d)}
-                for d in ctx.drugs
+                {"label": f"drug={d}", "seed_state": _seed(ctx.population, d)} for d in ctx.drugs
             ]
         return [
             {
@@ -479,8 +473,10 @@ class ExecutionCoordinator:
             "verify:aggregate",
             origin="deterministic",
             duration_ms=0.0,
-            status="success" if ctx.verification_state is VerificationState.PASSED
-            else "warning" if ctx.verification_state is VerificationState.WARNING
+            status="success"
+            if ctx.verification_state is VerificationState.PASSED
+            else "warning"
+            if ctx.verification_state is VerificationState.WARNING
             else "error",
             state=ctx.verification_state.value,
             runs=len(result.runs),
@@ -536,9 +532,7 @@ class ExecutionCoordinator:
     # Step 4 — Narrative synthesis (generative)
     # ------------------------------------------------------------------
 
-    def _synthesize(
-        self, ctx: SwarmExecutionContext, result: CoordinationResult
-    ) -> None:
+    def _synthesize(self, ctx: SwarmExecutionContext, result: CoordinationResult) -> None:
         """Produce audit + comparative narratives via the AI client.
 
         Both calls are wrapped in ``GenerativeBoundary`` guards:

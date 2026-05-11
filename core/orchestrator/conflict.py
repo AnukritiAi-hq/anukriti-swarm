@@ -34,11 +34,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 from core.orchestrator.context import SwarmExecutionContext, VerificationState
 
 if TYPE_CHECKING:  # pragma: no cover — type-checker view only
+    from collections.abc import Iterable
+
     from core.orchestrator.coordinator import CoordinationResult
 
 
@@ -50,9 +52,11 @@ class EscalationTier(str, Enum):
 
 
 class ConflictKind(str, Enum):
-    VERIFICATION_DIVERGENCE = "verification_divergence"   # verdicts disagree
-    RECOMMENDATION_DIVERGENCE = "recommendation_divergence"  # recs disagree (expected across pops — advisory)
-    EVIDENCE_GAP = "evidence_gap"                          # some runs have no citations
+    VERIFICATION_DIVERGENCE = "verification_divergence"  # verdicts disagree
+    RECOMMENDATION_DIVERGENCE = (
+        "recommendation_divergence"  # recs disagree (expected across pops — advisory)
+    )
+    EVIDENCE_GAP = "evidence_gap"  # some runs have no citations
     PIPELINE_PARTIAL_FAILURE = "pipeline_partial_failure"  # fan-out had mixed success
 
 
@@ -163,9 +167,7 @@ class ConflictResolver:
         notes: list[str] = []
         if ctx.verification_state is VerificationState.WARNING and tier is EscalationTier.NONE:
             tier = EscalationTier.ADVISORY
-            notes.append(
-                "verification_state=warning; proceeding but flagging advisory"
-            )
+            notes.append("verification_state=warning; proceeding but flagging advisory")
 
         return Resolution(conflicts=conflicts, tier=tier, notes=notes)
 
@@ -173,9 +175,7 @@ class ConflictResolver:
     # Detectors
     # ------------------------------------------------------------------
 
-    def _detect_pipeline_partial(
-        self, coord: CoordinationResult
-    ) -> list[Conflict]:
+    def _detect_pipeline_partial(self, coord: CoordinationResult) -> list[Conflict]:
         """Some fan-out runs failed; ``CoordinationResult.runs`` is thinner than expected."""
         # The coordinator records per-row errors onto ctx.errors, but we
         # also want a structured conflict record for the resolver output.
@@ -186,9 +186,7 @@ class ConflictResolver:
         # already failed fast in that case.
         return []  # single-run partial is already fatal-escalated upstream.
 
-    def _detect_verification_divergence(
-        self, coord: CoordinationResult
-    ) -> list[Conflict]:
+    def _detect_verification_divergence(self, coord: CoordinationResult) -> list[Conflict]:
         """Verdicts disagree across comparative runs."""
         if len(coord.runs) < 2:
             return []
@@ -196,9 +194,7 @@ class ConflictResolver:
         verdicts: list[str] = []
         for run in coord.runs:
             labels.append(run.get("_row_label", "?"))
-            verdicts.append(
-                str(run.get("verification", {}).get("verdict", "")).lower()
-            )
+            verdicts.append(str(run.get("verification", {}).get("verdict", "")).lower())
         unique = {v for v in verdicts if v}
         if len(unique) <= 1:
             return []
@@ -210,15 +206,13 @@ class ConflictResolver:
                 tier=EscalationTier.REVIEW,
                 message=(
                     "verification verdicts differ across runs: "
-                    + ", ".join(f"{l}={v}" for l, v in zip(labels, verdicts))
+                    + ", ".join(f"{label}={v}" for label, v in zip(labels, verdicts, strict=False))
                 ),
                 affected=labels,
             )
         ]
 
-    def _detect_recommendation_divergence(
-        self, coord: CoordinationResult
-    ) -> list[Conflict]:
+    def _detect_recommendation_divergence(self, coord: CoordinationResult) -> list[Conflict]:
         """Recommendations differ across runs — usually advisory.
 
         Different recommendations across populations is the whole point
@@ -243,33 +237,27 @@ class ConflictResolver:
                 tier=EscalationTier.ADVISORY,
                 message=(
                     "recommendations differ across runs: "
-                    + ", ".join(f"{l}=\"{r[:40]}\"" for l, r in zip(labels, recs))
+                    + ", ".join(
+                        f'{label}="{r[:40]}"' for label, r in zip(labels, recs, strict=False)
+                    )
                 ),
                 affected=labels,
             )
         ]
 
-    def _detect_evidence_gap(
-        self, coord: "CoordinationResult"
-    ) -> list[Conflict]:
+    def _detect_evidence_gap(self, coord: CoordinationResult) -> list[Conflict]:
         """One or more runs produced no citations."""
         if not coord.runs:
             return []
         missing = [
-            run.get("_row_label", "?")
-            for run in coord.runs
-            if not (run.get("citations") or [])
+            run.get("_row_label", "?") for run in coord.runs if not (run.get("citations") or [])
         ]
         if not missing:
             return []
         # If *every* run lacks evidence, block synthesis — the generative
         # boundary would also catch this, but producing a structured
         # conflict here means a cleaner audit record.
-        tier = (
-            EscalationTier.BLOCK
-            if len(missing) == len(coord.runs)
-            else EscalationTier.REVIEW
-        )
+        tier = EscalationTier.BLOCK if len(missing) == len(coord.runs) else EscalationTier.REVIEW
         return [
             Conflict(
                 kind=ConflictKind.EVIDENCE_GAP,

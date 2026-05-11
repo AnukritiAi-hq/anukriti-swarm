@@ -30,7 +30,7 @@ append-only paths so callers don't have to copy the whole model.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -46,15 +46,15 @@ class OrchestrationPhase(str, Enum):
     wraps the pipeline and also performs planning and synthesis around it.
     """
 
-    RECEIVED = "received"          # Query ingested, context built
-    PLANNING = "planning"          # Gemini decomposing into substeps
-    ROUTING = "routing"            # AgentRouter selecting specialists
-    EXECUTING = "executing"        # Deterministic pipeline running
-    VERIFYING = "verifying"        # Verification in progress
+    RECEIVED = "received"  # Query ingested, context built
+    PLANNING = "planning"  # Gemini decomposing into substeps
+    ROUTING = "routing"  # AgentRouter selecting specialists
+    EXECUTING = "executing"  # Deterministic pipeline running
+    VERIFYING = "verifying"  # Verification in progress
     SYNTHESIZING = "synthesizing"  # Gemini composing explanations
     COMPLETE = "complete"
     FAILED = "failed"
-    ESCALATED = "escalated"        # Routed to human review
+    ESCALATED = "escalated"  # Routed to human review
 
 
 class VerificationState(str, Enum):
@@ -121,7 +121,7 @@ class SwarmExecutionContext(BaseModel):
     # --- lifecycle ---
     phase: OrchestrationPhase = OrchestrationPhase.RECEIVED
     errors: list[str] = Field(default_factory=list)
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
     model_config = {"arbitrary_types_allowed": True}
@@ -156,7 +156,7 @@ class SwarmExecutionContext(BaseModel):
     def mark_phase(self, phase: OrchestrationPhase) -> None:
         self.phase = phase
         if phase in (OrchestrationPhase.COMPLETE, OrchestrationPhase.FAILED):
-            self.completed_at = datetime.now(timezone.utc)
+            self.completed_at = datetime.now(UTC)
 
     # -----------------------------
     # Helpers

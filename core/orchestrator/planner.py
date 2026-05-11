@@ -30,14 +30,13 @@ from ai.prompts.templates import (
     ORCHESTRATION_SUBSTEPS,
     orchestration_plan,
 )
+
 from core.orchestrator.boundary import (
     DEFAULT_BOUNDARY,
-    GenerativeAction,
     GenerativeBoundary,
     GenerativeBoundaryViolation,
 )
 from core.orchestrator.context import OrchestrationPhase, SwarmExecutionContext
-
 
 SUBSTEPS = frozenset(ORCHESTRATION_SUBSTEPS)
 
@@ -222,8 +221,7 @@ class WorkflowPlanner:
             "narrative_synthesis": "audience-specific explanation of verified findings",
         }
         steps = [
-            PlannedStep(step=i + 1, action=a, reason=reasons[a])
-            for i, a in enumerate(ordered)
+            PlannedStep(step=i + 1, action=a, reason=reasons[a]) for i, a in enumerate(ordered)
         ]
         return WorkflowPlan(
             steps=steps,
@@ -247,14 +245,24 @@ class WorkflowPlanner:
         changed = False
 
         if "verification" not in actions:
-            plan.steps.append(PlannedStep(step=len(plan.steps) + 1, action="verification",
-                                          reason="auto-injected: safety gate"))
+            plan.steps.append(
+                PlannedStep(
+                    step=len(plan.steps) + 1,
+                    action="verification",
+                    reason="auto-injected: safety gate",
+                )
+            )
             plan.notes.append("injected missing verification step")
             changed = True
 
         if "narrative_synthesis" not in actions:
-            plan.steps.append(PlannedStep(step=len(plan.steps) + 1, action="narrative_synthesis",
-                                          reason="auto-injected: audience narrative"))
+            plan.steps.append(
+                PlannedStep(
+                    step=len(plan.steps) + 1,
+                    action="narrative_synthesis",
+                    reason="auto-injected: audience narrative",
+                )
+            )
             plan.notes.append("injected missing narrative_synthesis step")
             changed = True
 
@@ -266,8 +274,11 @@ class WorkflowPlanner:
             )
             plan.steps.insert(
                 insert_at,
-                PlannedStep(step=insert_at + 1, action="comparative_analysis",
-                            reason="auto-injected: comparative run"),
+                PlannedStep(
+                    step=insert_at + 1,
+                    action="comparative_analysis",
+                    reason="auto-injected: comparative run",
+                ),
             )
             plan.notes.append("injected missing comparative_analysis step")
             changed = True

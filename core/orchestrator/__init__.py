@@ -17,15 +17,27 @@ Public API::
 
     from core.orchestrator import (
         # state / model
-        SwarmExecutionContext, OrchestrationPhase, VerificationState,
+        SwarmExecutionContext,
+        OrchestrationPhase,
+        VerificationState,
         # observability
-        OrchestrationTrace, ActivationLog, StepMetric,
+        OrchestrationTrace,
+        ActivationLog,
+        StepMetric,
         # safety
-        GenerativeBoundary, GenerativeAction, GenerativeBoundaryViolation,
+        GenerativeBoundary,
+        GenerativeAction,
+        GenerativeBoundaryViolation,
         DEFAULT_BOUNDARY,
         # pipeline pieces
-        ContextAssembler, WorkflowPlanner, AgentRouter, ExecutionCoordinator,
-        PlannedStep, WorkflowPlan, RouteDecision, RoutingResult,
+        ContextAssembler,
+        WorkflowPlanner,
+        AgentRouter,
+        ExecutionCoordinator,
+        PlannedStep,
+        WorkflowPlan,
+        RouteDecision,
+        RoutingResult,
         CoordinationResult,
     )
 """

@@ -23,12 +23,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from agents.profiles.identity import AgentDomain, AgentProfile
 from agents.registry.registry import AgentRegistry
 from core.orchestrator.context import OrchestrationPhase, SwarmExecutionContext
-from core.orchestrator.planner import PlannedStep
 
+if TYPE_CHECKING:
+    from core.orchestrator.planner import PlannedStep
 
 # ---------------------------------------------------------------------------
 # Action → domain mapping
@@ -94,9 +96,7 @@ class AgentRouter:
     # Public entry point
     # ------------------------------------------------------------------
 
-    def route(
-        self, ctx: SwarmExecutionContext, steps: list[PlannedStep]
-    ) -> RoutingResult:
+    def route(self, ctx: SwarmExecutionContext, steps: list[PlannedStep]) -> RoutingResult:
         """Resolve an entire plan.
 
         Side effects:
@@ -173,9 +173,7 @@ class AgentRouter:
     # Per-step routing
     # ------------------------------------------------------------------
 
-    def _route_step(
-        self, ctx: SwarmExecutionContext, step: PlannedStep
-    ) -> RouteDecision:
+    def _route_step(self, ctx: SwarmExecutionContext, step: PlannedStep) -> RouteDecision:
         """Resolve a single planned step to agents (or mark it skipped)."""
         domains = _ACTION_DOMAINS.get(step.action, ())
         if not domains:
@@ -192,9 +190,7 @@ class AgentRouter:
             agents: list[AgentProfile] = []
             reasons: list[str] = []
             for pop in ctx.populations:
-                picked = self._pick_by_domain(
-                    domains, gene=ctx.gene, population=pop, drug=ctx.drug
-                )
+                picked = self._pick_by_domain(domains, gene=ctx.gene, population=pop, drug=ctx.drug)
                 agents.extend(picked)
                 reasons.append(f"population={pop}")
             return RouteDecision(
@@ -242,9 +238,7 @@ class AgentRouter:
         filtered = [
             c
             for c in candidates
-            if c.matches_query(
-                gene=gene or None, drug=drug or None, population=population or None
-            )
+            if c.matches_query(gene=gene or None, drug=drug or None, population=population or None)
         ]
         # Priority-ordered (lower = more specific)
         return sorted(filtered, key=lambda a: a.priority)

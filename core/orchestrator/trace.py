@@ -29,7 +29,7 @@ store or for ``visualization.export`` JSON dumps.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 # Origin tag aligns with the deterministic/generative boundary.
@@ -58,7 +58,7 @@ class StepMetric:
     status: StepStatus = "success"
     duration_ms: float = 0.0
     details: dict[str, Any] = field(default_factory=dict)
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -77,7 +77,7 @@ class ActivationLog:
     agent_id: str
     role: str  # e.g. "pharmacogene", "population", "retrieval", "verification"
     reason: str  # why the router picked this agent
-    activated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    activated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -102,7 +102,7 @@ class OrchestrationTrace:
     activations: list[ActivationLog] = field(default_factory=list)
     reasoning_summary: str = ""  # Gemini-produced plan/summary (optional)
     total_duration_ms: float = 0.0
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
     # --- mutation helpers (append-only) ---
@@ -136,7 +136,7 @@ class OrchestrationTrace:
     def mark_complete(self, total_duration_ms: float) -> None:
         """Finalize the trace."""
         self.total_duration_ms = total_duration_ms
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
 
     # --- introspection ---
 

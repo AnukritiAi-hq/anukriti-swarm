@@ -141,6 +141,12 @@ jobs:
       - name: ruff format --check interoperability/
         run: ruff format --check interoperability/
 
+      - name: ruff check core/orchestrator/
+        run: ruff check core/orchestrator/
+
+      - name: ruff format --check core/orchestrator/
+        run: ruff format --check core/orchestrator/
+
       # ------- INFORMATIONAL: rest of the codebase -------
       #
       # These steps print the current debt counts but do not fail

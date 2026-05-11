@@ -25,14 +25,15 @@ well-formed.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.orchestrator.context import (
     OrchestrationPhase,
     SwarmExecutionContext,
 )
-from core.orchestrator.trace import OrchestrationTrace
 
+if TYPE_CHECKING:
+    from core.orchestrator.trace import OrchestrationTrace
 
 # Known populations and genes, used for light query parsing when only a
 # freeform string is supplied. Kept intentionally small — the router

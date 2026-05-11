@@ -27,8 +27,8 @@ What Gemini **may NOT** do (enforced here):
 Usage::
 
     boundary = GenerativeBoundary()
-    boundary.assert_allowed(GenerativeAction.PLAN)                   # ok
-    boundary.assert_allowed(GenerativeAction.INFER_PHENOTYPE)        # raises
+    boundary.assert_allowed(GenerativeAction.PLAN)  # ok
+    boundary.assert_allowed(GenerativeAction.INFER_PHENOTYPE)  # raises
     boundary.guard_synthesis(ctx)  # raises if verification not passed
 
 Violations raise ``GenerativeBoundaryViolation``, which the coordinator
@@ -39,9 +39,12 @@ whole run — but the guard itself is strict by design.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Iterable
+from typing import TYPE_CHECKING
 
 from core.orchestrator.context import SwarmExecutionContext, VerificationState
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class GenerativeAction(str, Enum):
@@ -72,7 +75,7 @@ ALLOWED_ACTIONS: frozenset[GenerativeAction] = frozenset(
 )
 
 
-class GenerativeBoundaryViolation(Exception):
+class GenerativeBoundaryViolation(Exception):  # noqa: N818 -- public API; "Violation" is the domain vocabulary (boundary violation, not a generic error)
     """Raised when a generative-layer caller attempts a forbidden action."""
 
     def __init__(self, action: GenerativeAction, reason: str) -> None:
@@ -148,8 +151,7 @@ class GenerativeBoundary:
         ):
             raise GenerativeBoundaryViolation(
                 GenerativeAction.BYPASS_VERIFICATION,
-                f"verification_state={ctx.verification_state.value}; "
-                "synthesis requires PASSED",
+                f"verification_state={ctx.verification_state.value}; " "synthesis requires PASSED",
             )
 
         pending = ctx.deterministic_results.get("pending_claims") or []
@@ -170,8 +172,7 @@ class GenerativeBoundary:
         if not ctx.query and not (ctx.gene or ctx.drug or ctx.populations):
             raise GenerativeBoundaryViolation(
                 GenerativeAction.PLAN,
-                "empty context; planner needs at least a query or one of "
-                "gene/drug/populations",
+                "empty context; planner needs at least a query or one of " "gene/drug/populations",
             )
 
 
