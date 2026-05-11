@@ -2,12 +2,12 @@
 
 > Forward-looking plan for Anukriti Swarm. For what has already shipped,
 > see **[`.project-status.md`](.project-status.md)** — the per-session
-> log covering sessions #1 through #12 is the single source of truth
+> log covering sessions #1 through #14 is the single source of truth
 > on current state.
 
 ---
 
-## Status as of 2026-05-10
+## Status as of 2026-05-11
 
 The **foundational phases (0-5 in earlier drafts of this roadmap) are
 complete.** The research platform has:
@@ -15,15 +15,17 @@ complete.** The research platform has:
 - Full 5-stage `SwarmRuntime` lifecycle (session #7)
 - 9 core specialist agents + agent bus (sessions #0-#5)
 - Deterministic safety engine with 4 verification engines (session #2)
-- Evidence sufficiency layer with 14 closed enums, 12+10+9 rules (session #6)
+- Evidence sufficiency layer with 15 closed enums, 12+10+9 rules + Method 4 cross-ancestry hedge (sessions #6, #14)
 - Pharmacogenomic knowledge graph (37 nodes, 34 edges) + multi-hop reasoner (session #6)
 - Multi-strategy retrieval with adaptive stopping (session #6)
 - MCP persistence layer: 6 services, 31 tools (sessions #0-#1)
 - Live FastAPI backend + WebSocket event stream (session #7)
 - Vanilla JS + D3 mission-control frontend (session #7)
-- 234 pytest tests (session #8)
-- GitHub Actions CI with progressive ruff hard-gate (sessions #9-#11)
+- **244 pytest tests** (sessions #8, #14)
+- GitHub Actions CI with progressive ruff hard-gate (sessions #9-#11, #13)
 - Docker + docker-compose (session #12)
+- Stage-1 cohort-scale demo with 16.0× ancestry delta (session #14)
+- `core/simulation/` closed-enum scope for cohort reasoning (session #14)
 
 Read the ⭐ Session entries in `.project-status.md` for the commit-
 level detail on each of these.
@@ -43,16 +45,43 @@ Summarized here:
 ### High-value, short horizon
 
 - [ ] **Progressive ruff hard-gate adoption** — continue the
-  session-#11 pattern. Next directories in order: `interoperability/`
-  → `core/orchestrator/` → `knowledge_graph/` → `core/models/` →
-  `core/verification/`. Each promotion is a small reviewable PR and
-  an ideal new-contributor entry point.
+  session-#11 pattern. Next directories in order: `core/orchestrator/`
+  → `knowledge_graph/` → `core/models/` → `core/verification/` →
+  `retrieval/` → `observability/`. Each promotion is a small
+  reviewable PR and an ideal new-contributor entry point.
 - [ ] **mypy CI gate** — declared in `requirements.txt` and pre-commit
   but not in CI. Deferred per
   [ADR-0001](https://github.com/AnukritiAi-hq/anukriti-pgx-core/blob/main/docs/adr/0001-founding-engineer-scope-and-deferrals.md)
   until ruff hard-gate reaches ≥60% of codebase.
 
 ### Medium-value, research-grade improvements
+
+**Recently shipped (session #14, 2026-05-11):**
+
+- [x] **Method 4 — cross-ancestry extrapolation hedge.** 8th value
+  `EXTRAPOLATION_WITH_CROSS_ANCESTRY_SUPPORT` on `SufficiencyDecision`,
+  gated via `SufficiencyDecisionEngine(allow_cross_ancestry_extrapolation=True)`.
+  Off by default, preserves byte-identical regression. 10 new tests
+  (244 total). Commit `12752f1`.
+- [x] **`core/simulation/` scaffold.** 3 closed enums +
+  3 frozen records for cohort-scale reasoning. Commit `1441f6a`.
+- [x] **Stage-1 cohort-scale demo.** `demos/cohort_demo.py` —
+  deterministic 100-patient Monte Carlo across 5 super-populations
+  with 16.0× SAS→AFR outcome delta. Consumes `core/simulation/` types;
+  Stage-1 public-data-only constraint.
+
+**Next candidate — Method 1 (gated on Tier 2 data arrival):**
+
+- [ ] **Method 1 — principled cross-ancestry borrowing.** Hierarchical
+  Bayesian PRS with ancestry-stratified partial pooling. Goes beyond
+  M4's hedging rule to actually *learn* cross-ancestry parameters
+  from the data. **Gated on Tier 2 data access** — All of Us
+  Researcher Workbench or GenomeIndia FeED. Do not start until at
+  least one institutional data agreement is in place; see
+  [`anukriti-pgx-core/docs/research-partnerships.md`](https://github.com/AnukritiAi-hq/anukriti-pgx-core/blob/main/docs/research-partnerships.md)
+  for the timeline.
+
+**Other open items:**
 
 - [ ] **`evidence_currency` verification check** — 7th check in the
   verification engine. Warn when cited CPIC/PMID sources are older
