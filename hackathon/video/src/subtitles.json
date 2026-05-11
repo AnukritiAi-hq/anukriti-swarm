@@ -2,246 +2,236 @@
   {
     "text": "Fourteen percent of South Asians cannot activate",
     "startSec": 0,
-    "endSec": 2.984
+    "endSec": 2.798
   },
   {
     "text": "clopidogrel.",
-    "startSec": 3.042,
-    "endSec": 3.994
+    "startSec": 2.844,
+    "endSec": 3.773
   },
   {
     "text": "Yet they are prescribed it at the",
-    "startSec": 4.319,
-    "endSec": 5.898
+    "startSec": 4.156,
+    "endSec": 5.759
   },
   {
     "text": "same rate as Europeans,",
-    "startSec": 5.956,
-    "endSec": 7.477
+    "startSec": 5.805,
+    "endSec": 7.419
   },
   {
     "text": "where only two percent are affected.",
-    "startSec": 7.57,
-    "endSec": 9.683
+    "startSec": 7.593,
+    "endSec": 10.043
   },
   {
     "text": "Meet Anukriti PGx.",
-    "startSec": 10.066,
-    "endSec": 12.759
+    "startSec": 10.553,
+    "endSec": 12.806
   },
   {
-    "text": "A pharmacogenomic intelligence superpower.",
-    "startSec": 12.968,
-    "endSec": 15.523
+    "text": "Pharmacogenomic intelligence, as a superpower.",
+    "startSec": 12.98,
+    "endSec": 16.068
   },
   {
     "text": "Built on MCP, SHARP,",
-    "startSec": 15.732,
-    "endSec": 17.96
+    "startSec": 16.277,
+    "endSec": 18.53
   },
   {
     "text": "and FHIR.",
-    "startSec": 18.076,
-    "endSec": 19.679
+    "startSec": 18.553,
+    "endSec": 20.387
   },
   {
     "text": "Watch the Consultant agent in action.",
-    "startSec": 19.888,
-    "endSec": 21.826
+    "startSec": 30,
+    "endSec": 32.392
   },
   {
     "text": "We ask a real clinical question.",
-    "startSec": 21.943,
-    "endSec": 24.566
+    "startSec": 32.566,
+    "endSec": 34.4
   },
   {
     "text": "In under two milliseconds,",
-    "startSec": 25.077,
-    "endSec": 26.482
+    "startSec": 34.609,
+    "endSec": 36.095
   },
   {
     "text": "five specialist agents collaborate.",
-    "startSec": 26.528,
-    "endSec": 28.862
+    "startSec": 36.304,
+    "endSec": 38.58
   },
   {
     "text": "Population reasoning.",
-    "startSec": 29.141,
-    "endSec": 30.441
+    "startSec": 38.905,
+    "endSec": 40.217
   },
   {
     "text": "Phenotype inference.",
-    "startSec": 30.615,
-    "endSec": 31.997
+    "startSec": 40.426,
+    "endSec": 41.807
   },
   {
     "text": "Knowledge graph traversal.",
-    "startSec": 32.148,
-    "endSec": 33.68
+    "startSec": 42.016,
+    "endSec": 43.513999999999996
   },
   {
     "text": "Sufficiency governance.",
-    "startSec": 33.796,
-    "endSec": 35.097
+    "startSec": 43.688,
+    "endSec": 45.022999999999996
   },
   {
     "text": "And deterministic verification.",
-    "startSec": 35.213,
-    "endSec": 37.314
+    "startSec": 45.197,
+    "endSec": 47.531
   },
   {
     "text": "The response is a full FHIR bundle.",
-    "startSec": 37.639,
-    "endSec": 40.565
+    "startSec": 47.774,
+    "endSec": 51.455
   },
   {
     "text": "Every claim is cited.",
-    "startSec": 40.774,
-    "endSec": 42.167
+    "startSec": 51.733000000000004,
+    "endSec": 53.185
   },
   {
     "text": "CPIC guideline.",
-    "startSec": 42.376,
-    "endSec": 44.025
+    "startSec": 53.510000000000005,
+    "endSec": 55.6
   },
   {
-    "text": "PubMed PMID.",
-    "startSec": 44.141,
-    "endSec": 45.917
+    "text": "PubMed I D.",
+    "startSec": 55.925,
+    "endSec": 57.295
   },
   {
     "text": "PharmGKB accession.",
-    "startSec": 46.068,
-    "endSec": 47.856
+    "startSec": 57.329,
+    "endSec": 59.059
   },
   {
     "text": "No hallucinations.",
-    "startSec": 48.007,
-    "endSec": 49.18
+    "startSec": 59.384,
+    "endSec": 60.592
   },
   {
     "text": "No silent prescriptions.",
-    "startSec": 49.296,
-    "endSec": 50.793
+    "startSec": 60.766,
+    "endSec": 62.6
   },
   {
     "text": "When another agent proposes a recommendation,",
-    "startSec": 51.235,
-    "endSec": 53.615
+    "startSec": 90,
+    "endSec": 92.705
   },
   {
     "text": "we verify it.",
-    "startSec": 53.824,
-    "endSec": 54.927
+    "startSec": 92.856,
+    "endSec": 94.075
   },
   {
     "text": "The Evidence Reviewer runs six safety checks.",
-    "startSec": 55.31,
-    "endSec": 57.701
+    "startSec": 94.354,
+    "endSec": 97.268
   },
   {
     "text": "Evidence grounding.",
-    "startSec": 57.945,
-    "endSec": 59.06
+    "startSec": 97.477,
+    "endSec": 98.615
   },
   {
     "text": "Deterministic boundary.",
-    "startSec": 59.385,
-    "endSec": 60.534
+    "startSec": 98.789,
+    "endSec": 100.286
   },
   {
     "text": "Provenance.",
-    "startSec": 60.569,
-    "endSec": 61.254
+    "startSec": 100.403,
+    "endSec": 101.215
   },
   {
     "text": "Guideline conflicts.",
-    "startSec": 61.428,
-    "endSec": 62.914
+    "startSec": 101.389,
+    "endSec": 102.968
   },
   {
     "text": "Sparse population data.",
-    "startSec": 63.123,
-    "endSec": 64.644
+    "startSec": 103.084,
+    "endSec": 104.756
   },
   {
     "text": "Hallucination detection.",
-    "startSec": 64.818,
-    "endSec": 66.246
+    "startSec": 104.872,
+    "endSec": 106.393
   },
   {
     "text": "Six out of six pass.",
-    "startSec": 66.525,
-    "endSec": 67.976
+    "startSec": 106.637,
+    "endSec": 108.158
   },
   {
     "text": "Autonomous delivery approved.",
-    "startSec": 68.151,
-    "endSec": 69.997
+    "startSec": 108.367,
+    "endSec": 110.619
   },
   {
-    "text": "The Prescriber Agent demonstrates composition.",
-    "startSec": 70.02,
-    "endSec": 73.015
+    "text": "The Prescriber agent demonstrates composition.",
+    "startSec": 135,
+    "endSec": 137.891
   },
   {
     "text": "Before writing a prescription,",
-    "startSec": 73.189,
-    "endSec": 74.722
+    "startSec": 138.135,
+    "endSec": 139.516
   },
   {
-    "text": "it consults the Anukriti PGx Consultant via",
-    "startSec": 74.896,
-    "endSec": 78.46
+    "text": "it consults the Anukriti P G x",
+    "startSec": 139.54,
+    "endSec": 142.372
   },
   {
-    "text": "agent-to-agent protocol.",
-    "startSec": 78.542,
-    "endSec": 80.283
+    "text": "Consultant, via agent to agent protocol.",
+    "startSec": 142.43,
+    "endSec": 145.786
   },
   {
     "text": "The consultant responds with alternatives and evidence.",
-    "startSec": 80.527,
-    "endSec": 84.08
+    "startSec": 146.169,
+    "endSec": 149.652
   },
   {
     "text": "The prescriber makes an informed decision.",
-    "startSec": 84.359,
-    "endSec": 87.238
+    "startSec": 149.89600000000002,
+    "endSec": 152.369
   },
   {
-    "text": "Anukriti PGx.",
-    "startSec": 87.749,
-    "endSec": 90.5
+    "text": "Anukriti P G x.",
+    "startSec": 165,
+    "endSec": 168.471
   },
   {
     "text": "Deterministic.",
-    "startSec": 90.941,
-    "endSec": 92.497
+    "startSec": 169.168,
+    "endSec": 170.271
   },
   {
     "text": "Population aware.",
-    "startSec": 92.88,
-    "endSec": 94.703
+    "startSec": 170.875,
+    "endSec": 172.256
   },
   {
     "text": "Every claim cited.",
-    "startSec": 95.144,
-    "endSec": 96.979
+    "startSec": 172.581,
+    "endSec": 173.963
   },
   {
     "text": "No hallucinations.",
-    "startSec": 97.362,
-    "endSec": 98.79
-  },
-  {
-    "text": "Built on MCP, SHARP,",
-    "startSec": 99.173,
-    "endSec": 101.866
-  },
-  {
-    "text": "and FHIR R5.",
-    "startSec": 101.924,
-    "endSec": 104.908
+    "startSec": 174.172,
+    "endSec": 175.542
   }
 ]
