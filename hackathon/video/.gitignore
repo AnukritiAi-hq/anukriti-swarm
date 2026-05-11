@@ -1,0 +1,11 @@
+node_modules/
+out/
+.DS_Store
+*.log
+
+# Public assets are intentionally included in git history for reproducibility
+# but gitignored below can be added if the clips are large.
+
+# Uncomment to exclude large binary assets from the repo:
+# public/clips/*.mp4
+# public/audio/*.mp3
