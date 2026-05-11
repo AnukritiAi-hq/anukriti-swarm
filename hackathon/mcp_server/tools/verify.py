@@ -23,10 +23,12 @@ from typing import Any
 from fastmcp.tools import tool
 
 from hackathon.mcp_server.tools._common import make_error, read_sharp
+from population.data.frequency_store import FrequencyStore
 from verification.engine import VerificationEngine
 
 
 _VERIFIER = VerificationEngine()
+_FREQ_STORE = FrequencyStore()
 
 
 @tool()
@@ -92,6 +94,13 @@ def pgx_verify_recommendation(
         "source": str(guideline_id),
         "population": str(population).strip().upper() if population else "",
     }
+
+    # Enrich with population frequency so sparse_population_data check passes
+    pop_code = output["population"]
+    if pop_code:
+        freq_result = _FREQ_STORE.lookup(output["gene"], "*2", pop_code)
+        output["frequency"] = freq_result.frequency if freq_result.found else None
+        output["sample_n"] = freq_result.sample_n if freq_result.found else None
 
     recommendations = [
         {
