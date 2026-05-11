@@ -92,7 +92,44 @@ python -m scripts.run_analysis --gene CYP2C19 --drug clopidogrel --population AF
 
 ---
 
-## Frontend (optional)
+## Docker Deployment
+
+### First-time setup on a fresh instance
+
+Use `setup.sh` when deploying to a new server/VM for the first time. It checks prerequisites, creates `.env`, builds images, and starts everything.
+
+```bash
+./scripts/setup.sh            # backend + frontend
+./scripts/setup.sh --mongo    # + MongoDB for MCP persistence
+```
+
+**When to use:** Fresh EC2/VM, new developer machine, or after a clean wipe.
+
+### Redeploy after code changes
+
+Use `deploy.sh` after you've made code changes and want them live. It rebuilds only changed layers (fast — Docker cache keeps `pip install` intact) and restarts containers.
+
+```bash
+./scripts/deploy.sh           # rebuild + restart (fast, uses cache)
+./scripts/deploy.sh --mongo   # include MongoDB profile
+./scripts/deploy.sh --full    # no-cache rebuild (use if something's stuck)
+```
+
+**When to use:** After any code edit — push to server, then run `deploy.sh`. Typical redeploy takes 5–15 seconds.
+
+### Which script when?
+
+| Situation | Script |
+|-----------|--------|
+| Brand new server, nothing running | `./scripts/setup.sh` |
+| Changed Python code, want it live | `./scripts/deploy.sh` |
+| Changed `requirements.txt` | `./scripts/deploy.sh` (cache auto-invalidates) |
+| Something broken, need clean slate | `./scripts/deploy.sh --full` |
+| Want MongoDB persistence | Add `--mongo` to either script |
+
+---
+
+## Frontend (optional, without Docker)
 
 ```bash
 cd frontend && python -m http.server 3000
