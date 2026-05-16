@@ -27,6 +27,13 @@ yarn-error.log*
 .next/
 out/
 
+# Hackathon Remotion video media (regenerable from scripts/generate-voiceover.mjs
+# and the screen-record clips; do not commit binary media to git)
+hackathon/video/public/audio/
+hackathon/video/public/clips/
+hackathon/video/public/voiceover/
+hackathon/video/public/
+
 # Environment
 .env
 .env.local
