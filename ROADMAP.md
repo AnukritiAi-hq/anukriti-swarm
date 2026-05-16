@@ -7,7 +7,7 @@
 
 ---
 
-## Status as of 2026-05-11
+## Status as of 2026-05-16
 
 The **foundational phases (0-5 in earlier drafts of this roadmap) are
 complete.** The research platform has:
@@ -26,6 +26,10 @@ complete.** The research platform has:
 - Docker + docker-compose (session #12)
 - Stage-1 cohort-scale demo with 16.0× ancestry delta (session #14)
 - `core/simulation/` closed-enum scope for cohort reasoning (session #14)
+- Flagship 4-act demo with BCHE / Vysya wedge (session #16; ACT 4 narrates the Kerdoncuff 2025 founder-effect signal)
+- A4 citation pass — every empirical claim in README, PLATFORM, strategy.md anchored to Martin 2017 / CPIC 2022 / Kerdoncuff 2025 (session #16)
+- Hackathon scaffolding committed (BYO-agent skills + Remotion video source; session #16)
+- Phase-C scientific outreach initiated — first contact with Andrea Gaedigk / PharmVar; 3 referrals queued (session #16; thread in [`anukriti_docs/founder-research/andrea_gaedigk/`](../anukriti_docs/founder-research/andrea_gaedigk/))
 
 Read the ⭐ Session entries in `.project-status.md` for the commit-
 level detail on each of these.
