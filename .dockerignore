@@ -46,6 +46,7 @@ architecture/
 whitepaper/
 technical_report/
 demo_assets/
+hackathon/  # local hackathon scratch space — not part of the runtime image
 frontend/  # served by the companion frontend container, not the backend image
 
 # ---- Environment files (secrets must never enter the image) ----

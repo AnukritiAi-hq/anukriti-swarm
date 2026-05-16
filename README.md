@@ -38,7 +38,7 @@ platform** ([`anukriti-pgx-core`](https://github.com/AnukritiAi-hq/anukriti-pgx-
 
 ## 🎯 The Problem
 
-**14% of South Asians cannot activate clopidogrel** (a drug that prevents heart attacks) — yet they're prescribed it at the same rate as Europeans, where only 2% are affected.
+**14% of South Asians cannot activate clopidogrel** (a drug that prevents heart attacks) — yet they're prescribed it at the same rate as Europeans, where only 2% are affected.[^cpic2022] The academic case is settled: European-derived polygenic risk scores lose >50% of their accuracy in non-European populations, with bias direction that is *unpredictable* even when causal variants and heritability are held constant.[^martin2017] And the gap compounds at the variant-discovery layer: ~24M SNVs and ~2.2M indels found in 2,762 LASI-DAD Indian whole-genomes are absent from gnomAD and 1000 Genomes — every PGx system that calls against those reference databases is blind to those variants.[^kerdoncuff2025]
 
 Current pharmacogenomic systems:
 - ❌ Ignore population context
@@ -207,11 +207,48 @@ anukriti-swarm/
 ## 🌍 Why This Matters
 
 Pharmacogenomic inequity is a global health crisis hiding in plain sight:
-- **36%** of South Asians carry CYP2C19*2 (clopidogrel resistance)
+- **36%** of South Asians carry CYP2C19*2 (clopidogrel resistance)[^cpic2022]
 - **20%** of Africans carry CYP2D6*17 (unique decreased-function allele)
 - **8%** of East Asians carry HLA-B*15:02 (carbamazepine SJS/TEN risk)
+- **0.28%** of Indians (enriched in the Vysya community of Andhra Pradesh / Telangana, 8 of 15 carriers) carry **BCHE L307P** — a succinylcholine-paralysis risk variant that is **absent from gnomAD entirely**. Every existing PGx system is blind to it.[^kerdoncuff2025]
 
 These populations are underserved by current pharmacogenomic tools. Anukriti Swarm makes population context a **first-class reasoning dimension** — not an afterthought.
+
+---
+
+## References
+
+The population-frequency, transferability, and variant-novelty
+claims in this README are anchored in published literature. Full
+PDFs and the running paper index are kept in
+[`anukriti_docs/papers/`](https://github.com/AnukritiAi-hq/anukriti_docs/tree/main/papers).
+The strategic synthesis of all six platform-foundational papers
+and how they shape the roadmap is in
+[`anukriti_docs/IDEA_REFINEMENT_AND_PHASING_2026-05-14.md`](https://github.com/AnukritiAi-hq/anukriti_docs/blob/main/IDEA_REFINEMENT_AND_PHASING_2026-05-14.md).
+
+[^cpic2022]: Lee CR, Luzum JA, Sangkuhl K, Gammal RS, Sabatine MS,
+    et al. **CPIC Guideline for CYP2C19 Genotype and Clopidogrel
+    Therapy: 2022 Update.** *Clinical Pharmacology & Therapeutics*
+    112(5):959–967.
+    [PMID:35034351](https://pubmed.ncbi.nlm.nih.gov/35034351/);
+    [NBK84114](https://www.ncbi.nlm.nih.gov/books/NBK84114/).
+
+[^martin2017]: Martin AR, Gignoux CR, Walters RK, Wojcik GL, Neale BM,
+    Gravel S, Daly MJ, Bustamante CD, Kenny EE.
+    **Human Demographic History Impacts Genetic Risk Prediction
+    across Diverse Populations.** *American Journal of Human
+    Genetics* 100(4):635–649, April 2017.
+    [doi:10.1016/j.ajhg.2017.03.004](https://doi.org/10.1016/j.ajhg.2017.03.004).
+
+[^kerdoncuff2025]: Kerdoncuff E, Skov L, Patterson N, Moorjani P,
+    Ganna A, et al. **50,000 years of evolutionary history of
+    India: Impact on health and disease variation.** *Cell*
+    188(13):3389–3404.e6, June 26, 2025.
+    [doi:10.1016/j.cell.2025.04.027](https://doi.org/10.1016/j.cell.2025.04.027).
+    LASI-DAD whole-genome cohort (n=2,762) — ~24M SNVs and
+    ~2.2M indels absent from gnomAD + 1000G; six distinct Indian
+    regional groupings; BCHE L307P enriched in Vysya community
+    at 0.28%, invisible to gnomAD.
 
 ---
 
