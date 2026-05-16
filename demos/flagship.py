@@ -2,7 +2,13 @@
 
 "The same drug can produce different risks across different populations."
 
-Three drugs. Four populations. One truth: pharmacogenomic equity matters.
+Four drugs. Five populations + one Indian community wedge. One truth:
+pharmacogenomic equity matters.
+
+ACT 1 — Clopidogrel / CYP2C19 (the original wedge: SAS 14% PM)
+ACT 2 — Codeine / CYP2D6 (population-specific allele landscape)
+ACT 3 — Carbamazepine / HLA-B*15:02 (the EAS SJS/TEN risk)
+ACT 4 — Succinylcholine / BCHE L307P (the Vysya wedge: invisible to gnomAD)
 
 Run: python -m demos.flagship
 """
@@ -36,7 +42,7 @@ def run_flagship() -> None:
     _p(f"  {B}{CYAN}  🧬 ANUKRITI SWARM — Flagship Demonstration{R}")
     _p(f"  {B}{'═' * 68}{R}")
     _p(f"  {D}  'The same drug can produce different risks across different populations.'{R}")
-    _p(f"  {D}  Three drugs. Four populations. Distributed genomic intelligence.{R}")
+    _p(f"  {D}  Four drugs. Five populations + one Indian community wedge. Distributed genomic intelligence.{R}")
     _p()
     time.sleep(0.3)
 
@@ -152,6 +158,46 @@ def run_flagship() -> None:
     time.sleep(0.3)
 
     # ══════════════════════════════════════════════════════════════════
+    # ACT 4: SUCCINYLCHOLINE — The Variant No Database Has Seen
+    # ══════════════════════════════════════════════════════════════════
+    # Source: Kerdoncuff et al. 2025 (Cell) — LASI-DAD whole-genome cohort.
+    # BCHE L307P at 0.28% in 2,762 LASI-DAD participants; 8 of 15 carriers
+    # in Telangana, enriched in the Vysya endogamous community. Variant is
+    # absent from gnomAD entirely — every PGx system that resolves alleles
+    # against gnomAD/1000G is blind to it. This act is *narrative-only*:
+    # the platform does not yet ship a BCHEAgent or a CommunityLevel enum.
+    # Phase B1/B2/B6-full work will land BCHE through the runtime; this
+    # act tells the wedge story today using the published prevalence stats.
+    _p(f"  {B}{BLUE}╔══════════════════════════════════════════════════════════════════╗{R}")
+    _p(f"  {B}{BLUE}║  ACT 4: SUCCINYLCHOLINE — The Variant No Database Has Seen    ║{R}")
+    _p(f"  {B}{BLUE}╚══════════════════════════════════════════════════════════════════╝{R}")
+    _p(f"  {D}  Routine cholecystectomy. Anesthesiologist administers succinylcholine.{R}")
+    _p(f"  {D}  Patient develops prolonged paralysis lasting hours. The cause:{R}")
+    _p(f"  {D}  BCHE L307P — a butyrylcholinesterase variant that prevents{R}")
+    _p(f"  {D}  succinylcholine breakdown. Anesthesia complication, not metabolism.{R}")
+    _p()
+    time.sleep(0.3)
+
+    _p(f"  {B}  BCHE L307P Carrier Prevalence (LASI-DAD whole-genome cohort, n=2,762):{R}")
+    _p(f"    Vysya (AP/Telangana):     {_bar(0.0533, 36, RED)}  {B}{RED}~5.3%{R}  ← founder-effect community")
+    _p(f"    Telangana (regional):     {_bar(0.0089, 36, YELLOW)} {B}{YELLOW}~0.9%{R}  ← 8 of 15 LASI-DAD carriers")
+    _p(f"    All India (LASI-DAD):     {_bar(0.0028, 36, YELLOW)} {B}0.28%{R}")
+    _p(f"    {D}gnomAD / 1000G:           {RED}{B}0.00%{R} {D}— variant absent from reference{R}")
+    _p(f"    {D}Existing PGx systems:     {RED}{B}BLIND{R}    {D}— no entry to match against{R}")
+    _p()
+
+    _p(f"  {B}  Anukriti's variant-novelty layer (Phase B4 — design landed):{R}")
+    _p(f"    {GREEN}✓{R} VARIANT_NOVELTY state machine: IN_GNOMAD / IN_1000G_ONLY / NOVEL_TO_REFERENCE / POPULATION_PRIVATE")
+    _p(f"    {GREEN}✓{R} New rule R13 routes NOVEL_TO_REFERENCE → ESCALATE (not generic missing-evidence)")
+    _p(f"    {GREEN}✓{R} Founder-effect facet (B3) attaches community-level HBD score")
+    _p(f"    {YELLOW}⚠{R} BCHE caller agent + CommunityLevel enum: pending Phase B1/B2/B6-full")
+    _p()
+    _p(f"  {D}  Source: Kerdoncuff et al. 2025, Cell 188(13):3389-3404.e6.{R}")
+    _p(f"  {D}  See anukriti_docs/IDEA_REFINEMENT_AND_PHASING_2026-05-14.md for the full plan.{R}")
+    _p()
+    time.sleep(0.3)
+
+    # ══════════════════════════════════════════════════════════════════
     # CONCLUSION
     # ══════════════════════════════════════════════════════════════════
     _p(f"  {B}{'═' * 68}{R}")
@@ -163,6 +209,7 @@ def run_flagship() -> None:
     _p(f"    • {RED}14%{R} of South Asians can't activate clopidogrel (vs 2% Europeans)")
     _p(f"    • {RED}22%{R} of Europeans carry CYP2D6*4 (vs 2% Africans)")
     _p(f"    • {RED}8%{R} of East Asians risk fatal SJS from carbamazepine (vs 0.1% Europeans)")
+    _p(f"    • {RED}5.3%{R} of Vysya in Telangana carry BCHE L307P (vs {RED}0%{R} in gnomAD — invisible to every existing PGx system)")
     _p()
     _p(f"  {B}  Current systems ignore this. Anukriti Swarm doesn't.{R}")
     _p()
