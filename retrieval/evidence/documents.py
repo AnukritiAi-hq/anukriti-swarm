@@ -117,7 +117,22 @@ PHARMGKB_DOCUMENTS: list[BiomedicalDocument] = [
             "implications for clopidogrel prescribing in these regions."
         ),
         genes=["CYP2C19"], drugs=["clopidogrel"],
-        keywords=["allele frequency", "population", "South Asian", "East Asian", "loss-of-function"],
+        # Includes EUR + the well-served Asian / Latino populations.
+        # AFR is deliberately omitted — the platform's evidence-sufficiency
+        # layer needs to keep flagging AFR-specific gaps until real
+        # AFR-focused publications are added to the seed (tracked in
+        # `evidence_sufficiency_demo` as the canonical refusal case).
+        keywords=[
+            "allele frequency",
+            "population",
+            "South Asian",
+            "East Asian",
+            "European",
+            "Latino",
+            "Hispanic",
+            "Admixed American",
+            "loss-of-function",
+        ],
         citation_id="PA166169660", year=2023,
     ),
 ]

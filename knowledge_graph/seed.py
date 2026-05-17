@@ -359,6 +359,28 @@ _edges_freq = [
           weight=0.18, stamp=_stamp("PA166169660", "pharmgkb")),
     _edge(_ALL_CYP2C19_2, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
           weight=0.15, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_2, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.10, stamp=_stamp("PA166169660", "pharmgkb")),
+    # CYP2C19*3 — EAS 8% (rare elsewhere; rounded floor 0.01 to keep
+    # the edge present so wildtype-baseline math reflects population coverage)
+    _edge(_ALL_CYP2C19_3, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.08, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_3, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.02, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_3, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.01, stamp=_stamp("PA166169660", "pharmgkb")),
+    # CYP2C19*17 — increased function; well-studied in EUR (~21%)
+    _edge(_ALL_CYP2C19_17, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.21, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_17, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.22, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_17, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.18, stamp=_stamp("PA166169660", "pharmgkb")),
+    _edge(_ALL_CYP2C19_17, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.17, stamp=_stamp("PA166169660", "pharmgkb")),
+    # CYP2C19*17 — EAS rare (~2%)
+    _edge(_ALL_CYP2C19_17, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.02, stamp=_stamp("PA166169660", "pharmgkb")),
     # CYP2D6*4 — EUR 20%
     _edge(_ALL_CYP2D6_4, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
           weight=0.20, stamp=_stamp("PMID:32722396", "pubmed")),

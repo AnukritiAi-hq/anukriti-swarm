@@ -519,6 +519,22 @@ def _pop_result_for(
     MISSING in the sufficiency layer — the whole point of
     ancestry-scarcity reporting.
 
+    Diplotype handling:
+      * Try EVERY allele in the diplotype (not just the first) — for
+        ``*1/*2`` we want the *2 frequency, not a {} miss because
+        ``*1`` (wildtype) has no AF edge in the seed KG.
+      * If the diplotype is homozygous wildtype (e.g. ``*1/*1``),
+        synthesize a baseline entry: this is the **canonical Normal
+        Metabolizer reference state**, fully covered by CPIC for
+        every well-studied population. Returning {} here causes the
+        POPULATION facet to read MISSING for the most-evidenced case
+        in the platform — the opposite of what we want for a
+        sufficiency layer that's supposed to escalate the *thin*
+        cases. The ``frequency`` reported is the population's
+        baseline (1 minus the sum of variant-allele frequencies in
+        the indexer for this gene). When the indexer can't enumerate,
+        report 1.0 — wildtype is by definition the residual.
+
     No indexer -> {} (defensive; unified_demo / runtime always
     supply one).
     """
@@ -526,25 +542,49 @@ def _pop_result_for(
     if indexer is None:
         return {}
 
-    # The allele id in the KG is 'allele:<GENE>*<NAME>', where NAME
-    # excludes the leading '*'. Extract the first allele from the
-    # context genotype and match against the indexer's per-population
-    # list by ALLELE node id (not by name — the indexer returns Nodes).
-    parts = [p.strip() for p in ctx.genotype.split("/") if p.strip()]
+    # Extract every allele in the diplotype, dropping the leading '*'.
+    parts = [p.strip().lstrip("*") for p in ctx.genotype.split("/") if p.strip()]
     if not parts:
         return {}
-    first_allele = parts[0].lstrip("*")
-    target_id = f"allele:{ctx.gene}*{first_allele}"
 
-    for node, freq in indexer.alleles_for(ctx.population):
-        if node.id == target_id:
+    # Pass 1: try every allele in the diplotype against the indexer.
+    pop_alleles = list(indexer.alleles_for(ctx.population))
+    pop_alleles_by_id = {node.id: float(freq) for node, freq in pop_alleles}
+    for allele in parts:
+        target_id = f"allele:{ctx.gene}*{allele}"
+        if target_id in pop_alleles_by_id:
             return {
-                "frequency": round(float(freq), 4),
+                "frequency": round(pop_alleles_by_id[target_id], 4),
                 "population": ctx.population.value,
                 "allele_id": target_id,
                 "source": "knowledge_graph.HIGHER_FREQUENCY_IN",
             }
-    # No matching edge for this allele in this population.
+
+    # Pass 2: homozygous wildtype (every allele is *1) — synthesize a
+    # reference-baseline entry. CPIC's clopidogrel/CYP2C19 guideline
+    # explicitly covers Normal Metabolizers as the baseline; refusing
+    # to recognise that as 'population evidence covered' is incorrect.
+    if all(allele in ("1", "1A", "1B") for allele in parts):
+        # Baseline = 1 minus the sum of variant-allele frequencies the
+        # indexer knows about for this gene + population. For unknown
+        # genes (AFR codeine etc) the total is < 1 anyway, so this
+        # reports the residual honestly.
+        gene_prefix = f"allele:{ctx.gene}*"
+        variant_sum = sum(
+            freq for nid, freq in pop_alleles_by_id.items()
+            if nid.startswith(gene_prefix)
+        )
+        baseline = max(0.0, 1.0 - variant_sum)
+        return {
+            "frequency": round(baseline, 4),
+            "population": ctx.population.value,
+            "allele_id": f"{gene_prefix}1",
+            "source": "knowledge_graph.HIGHER_FREQUENCY_IN.baseline",
+            "is_baseline": True,
+        }
+
+    # No matching edge for any allele in this population, and the
+    # diplotype is not homozygous wildtype. Honest miss.
     return {}
 
 
