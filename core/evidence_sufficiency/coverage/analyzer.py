@@ -288,7 +288,7 @@ class EvidenceCoverageAnalyzer:
         if facet is ClaimEvidenceFacet.CPIC:
             return self._facet_cpic(docs, gene, drug)
         if facet is ClaimEvidenceFacet.POPULATION:
-            return self._facet_population(run, docs, population)
+            return self._facet_population(run, docs, gene, population)
         if facet is ClaimEvidenceFacet.RECOMMENDATION:
             return self._facet_recommendation(run)
         if facet is ClaimEvidenceFacet.CONFLICT_FREE:
@@ -382,14 +382,30 @@ class EvidenceCoverageAnalyzer:
     def _facet_population(
         run: dict[str, Any],
         docs: list[dict[str, Any]],
+        gene: str,
         population: SuperPopulation,
     ) -> tuple[FacetCoverageState, tuple[str, ...], str]:
         pop_result = run.get("population_result") or {}
         has_pop_result = bool(pop_result and pop_result.get("frequency") is not None)
 
+        # Population-allele context is a property of a (gene, population)
+        # pair, not just population. Filter candidate docs by gene
+        # overlap so that, e.g., a DPYD/SAS evidence paper does not
+        # satisfy the POPULATION facet for a CYP2D6/SAS run. This
+        # mirrors the gene-scoping ``_facet_cpic`` and ``_facet_allele``
+        # already enforce.
+        gene_u = (gene or "").upper()
+
+        def _doc_in_gene_scope(d: dict[str, Any]) -> bool:
+            if not gene_u:
+                return True
+            return gene_u in (str(g).upper() for g in d.get("genes") or ())
+
         # Consider docs whose title or keywords mention the population.
         refs: list[str] = []
         for d in docs:
+            if not _doc_in_gene_scope(d):
+                continue
             hay = " ".join(
                 [
                     str(d.get("title", "")),
@@ -400,8 +416,16 @@ class EvidenceCoverageAnalyzer:
                 refs.append(str(d["citation_id"]))
 
         # Also accept retrieval_results metadata if docs weren't passed.
+        # Retrieval results carry a ``genes`` field when sourced from
+        # the in-tree document store; honour it when present so the
+        # gene-scope discipline applies on this fallback path too.
         if not refs:
             for ev in run.get("retrieval_results") or []:
+                ev_genes = ev.get("genes") or ev.get("gene_tags") or ()
+                if gene_u and ev_genes and gene_u not in (
+                    str(g).upper() for g in ev_genes
+                ):
+                    continue
                 text = " ".join(
                     [
                         str(ev.get("title", "")),

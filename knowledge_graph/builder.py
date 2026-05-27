@@ -261,17 +261,41 @@ class PopulationGraphIndexer:
     # ------------------------------------------------------------------
 
     def alleles_for(
-        self, population: SuperPopulation, *, min_frequency: float = 0.0
+        self, population: SuperPopulation, *, min_frequency: float = 0.0,
+        gene: str | None = None,
     ) -> tuple[tuple[Node, float], ...]:
         """Return sorted (allele, frequency) pairs for ``population``.
 
         Empty tuple if the population has no observed alleles.
+
+        ``gene`` — optional case-insensitive gene filter. When supplied,
+        only allele Nodes belonging to that gene are returned. Allele
+        Nodes carry their gene either in ``payload["gene"]`` (the
+        canonical location for non-star alleles like DPYD's c.2846A>T)
+        or via the ``GENE*<allele>`` name prefix used by star alleles
+        (CYP2C19*2, CYP2D6*4, …). Both are checked.
         """
 
         pairs = self.alleles_by_population.get(population, ())
-        if min_frequency <= 0.0:
-            return pairs
-        return tuple(p for p in pairs if p[1] >= min_frequency)
+        if min_frequency > 0.0:
+            pairs = tuple(p for p in pairs if p[1] >= min_frequency)
+        if gene:
+            gene_u = gene.upper()
+
+            def _gene_match(node: Node) -> bool:
+                payload_gene = (
+                    str((node.payload or {}).get("gene") or "").upper()
+                )
+                if payload_gene:
+                    return payload_gene == gene_u
+                # Star-allele convention: ``CYP2C19*2`` -> gene ``CYP2C19``.
+                name = str(node.name or "").upper()
+                if "*" in name:
+                    return name.split("*", 1)[0] == gene_u
+                return False
+
+            pairs = tuple(p for p in pairs if _gene_match(p[0]))
+        return pairs
 
     def drugs_for(self, population: SuperPopulation) -> tuple[Node, ...]:
         return self.drugs_by_population.get(population, ())

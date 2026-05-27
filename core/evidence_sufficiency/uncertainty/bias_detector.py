@@ -195,7 +195,17 @@ class PopulationEvidenceBiasDetector:
 
         # Rule 2 — ANCESTRY_SCARCITY
         if pop_indexer is not None:
-            counts = {pop: len(pop_indexer.alleles_for(pop)) for pop in SuperPopulation}
+            # Gene-scope the count so that adding well-covered alleles
+            # for a different gene to the KG (e.g. DPYD edges added
+            # without changing CYP2C19 coverage) doesn't mask scarcity
+            # for the gene actually under question. Mirrors the gene
+            # scoping ``EvidenceCoverageAnalyzer._facet_population``
+            # already enforces.
+            gene_for_filter = (coverage.gene or "").strip() or None
+            counts = {
+                pop: len(pop_indexer.alleles_for(pop, gene=gene_for_filter))
+                for pop in SuperPopulation
+            }
             max_count = max(counts.values(), default=0)
             target_count = counts.get(target, 0)
             if max_count > 0:
@@ -224,8 +234,11 @@ class PopulationEvidenceBiasDetector:
         pop_state = coverage.facet_states[ClaimEvidenceFacet.POPULATION]
         if pop_state is FacetCoverageState.UNCERTAIN:
             target_has_freq_data = False
+            gene_for_filter = (coverage.gene or "").strip() or None
             if pop_indexer is not None:
-                target_has_freq_data = len(pop_indexer.alleles_for(target)) > 0
+                target_has_freq_data = (
+                    len(pop_indexer.alleles_for(target, gene=gene_for_filter)) > 0
+                )
             if not target_has_freq_data:
                 findings.append(
                     BiasFinding(
@@ -240,7 +253,7 @@ class PopulationEvidenceBiasDetector:
                         measurements={
                             "pop_indexer_supplied": pop_indexer is not None,
                             "target_allele_count_in_kg": (
-                                len(pop_indexer.alleles_for(target))
+                                len(pop_indexer.alleles_for(target, gene=gene_for_filter))
                                 if pop_indexer is not None
                                 else 0
                             ),

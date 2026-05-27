@@ -269,11 +269,28 @@ def main() -> None:
     # ------------------------------- 5 -------------------------------
     _scenario(
         5, "UNSUPPORTED_EXTRAPOLATION — AMR with no seed coverage",
-        "AMR target + POPULATION UNCERTAIN + AMR has zero alleles in the KG. "
-        "Bias detector names the extrapolation explicitly.",
+        "AMR target + POPULATION UNCERTAIN + AMR has zero CYP2D6 alleles "
+        "in the seed KG. Bias detector names the extrapolation explicitly.",
     )
     _expected("decision=downgrade (R9), 3 bias flags (eurocentric + scarcity + extrapolation)")
+    # Switch to CYP2D6/codeine: with the seed KG's gene-scoped allele
+    # counts (post the post-#16 hotfix that filled in CYP2C19 frequency
+    # edges across all super-pops), AMR is no longer scarce on CYP2C19
+    # but remains scarce on CYP2D6 (zero alleles). The bias detector's
+    # ANCESTRY_SCARCITY rule is gene-scoped, so picking a gene where
+    # AMR is genuinely missing keeps the demo's pedagogical intent
+    # ("AMR with no seed coverage") aligned with current ground truth.
     run = _baseline_run()
+    run["gene"] = "CYP2D6"; run["drug"] = "codeine"
+    run["allele1"] = "*1"; run["allele2"] = "*4"
+    run["pharmacogene_result"] = {
+        "gene": "CYP2D6", "phenotype": "Intermediate Metabolizer",
+        "rule_id": "cpic.activity_score", "origin": "deterministic",
+    }
+    run["recommendations"] = [
+        {"recommendation": "Avoid codeine; use morphine",
+         "evidence_refs": ["PMID:32722396"]},
+    ]
     run["population"] = SuperPopulation.AMR
     run["population_result"] = {"frequency": 0.10, "population": "AMR"}
     r = checkpoint.evaluate(

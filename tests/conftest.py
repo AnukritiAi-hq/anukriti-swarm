@@ -182,8 +182,35 @@ class FakePopIndexer:
     alleles: dict[SuperPopulation, list[str]] = field(default_factory=dict)
     evidence: dict[SuperPopulation, list[str]] = field(default_factory=dict)
 
-    def alleles_for(self, pop: SuperPopulation) -> list[str]:
-        return list(self.alleles.get(pop, []))
+    def alleles_for(
+        self, pop: SuperPopulation, *, gene: str | None = None,
+    ) -> list[str]:
+        # ``gene`` mirrors the real ``PopulationGraphIndexer.alleles_for``
+        # kwarg (added when the bias detector started gene-scoping its
+        # ANCESTRY_SCARCITY / UNSUPPORTED_EXTRAPOLATION rules). The fake
+        # stores plain string allele names; it cannot read
+        # ``payload["gene"]`` like the real indexer does.
+        #
+        # Filtering policy: only **exclude** entries that visibly belong
+        # to a *different* gene (entries shaped like ``GENE*<allele>``
+        # whose prefix doesn't match ``gene``). Plain opaque names like
+        # ``"a1"`` pass through unchanged so existing tests that don't
+        # care about gene scoping keep working without per-test
+        # rewrites. When ``gene`` is None (default), behaviour is
+        # identical to the original implementation.
+        items = list(self.alleles.get(pop, []))
+        if gene:
+            gene_u = gene.upper()
+            kept: list[str] = []
+            for a in items:
+                au = a.upper()
+                if "*" in au:
+                    prefix = au.split("*", 1)[0]
+                    if prefix and prefix != gene_u:
+                        continue  # belongs to a different gene
+                kept.append(a)
+            items = kept
+        return items
 
     def evidence_for(self, pop: SuperPopulation) -> list[str]:
         return list(self.evidence.get(pop, []))

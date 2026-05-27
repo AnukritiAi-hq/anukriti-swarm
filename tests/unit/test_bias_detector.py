@@ -292,8 +292,14 @@ class TestUnsupportedExtrapolation:
             SuperPopulation.AFR,
             pop_state=FacetCoverageState.UNCERTAIN,
         )
+        # Allele scoped to the analysis gene (CYP2C19, FLAGSHIP_GENE).
+        # The bias detector now gene-scopes ``alleles_for`` lookups so
+        # an allele under a different gene (e.g. CYP2D6*17) would no
+        # longer count as freq data for an analysis on CYP2C19. Use a
+        # gene-matching allele to test the rule's "has freq data"
+        # branch.
         indexer = make_pop_indexer(
-            alleles={SuperPopulation.AFR: ["CYP2D6*17"]},
+            alleles={SuperPopulation.AFR: ["CYP2C19*2"]},
         )
         findings = detector.detect(analysis, pop_indexer=indexer)
         kinds = {f.kind for f in findings}
