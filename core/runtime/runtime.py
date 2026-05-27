@@ -668,6 +668,54 @@ def _patient_narrative(ctx: UnifiedExecutionContext, citations: list[str]) -> st
             f"Codeine cannot be activated to morphine — use morphine "
             f"directly.{refs}"
         )
+    if ctx.gene == "DPYD":
+        # Map the diplotype back to CPIC 2017+2018 fluoropyrimidine
+        # phenotype + dose recommendation. The full text below is the
+        # patient-facing version; researcher-narrative carries the
+        # activity-score citation (PMID:29152729) and is rendered by
+        # _researcher_narrative().
+        diplotype = ctx.genotype
+        drug_label = "5-fluorouracil" if ctx.drug == "fluorouracil" else ctx.drug
+        no_func_set = {"*2A", "*13"}
+        dec_func_set = {"c.2846A>T", "HapB3"}
+        parts = [p.strip() for p in diplotype.split("/") if p.strip()]
+        no_func = sum(1 for p in parts if p in no_func_set)
+        dec_func = sum(1 for p in parts if p in dec_func_set)
+        # Phenotype mirrors CPIC Table 5 with pgx-core's pinned overlay.
+        is_pm = no_func >= 2 or (no_func == 1 and dec_func == 1)
+        is_im = (no_func == 1) or (dec_func >= 1 and no_func == 0)
+        if is_pm:
+            return (
+                f"Your DPYD {diplotype} genotype indicates Poor Metabolizer "
+                f"phenotype — complete or near-complete DPD deficiency. "
+                f"CPIC 2017 STRONG recommendation: AVOID {drug_label} and "
+                f"prodrug-based regimens (capecitabine, tegafur). Severe, "
+                f"life-threatening toxicity is expected at standard dose. "
+                f"If no fluoropyrimidine-free alternative exists, administer "
+                f"at <25% of the standard dose with early therapeutic drug "
+                f"monitoring; phenotyping (DPD enzyme activity assay) is "
+                f"strongly recommended. Uridine triacetate (Vistogard) is "
+                f"the FDA-approved rescue for overdose.{refs}"
+            )
+        if is_im:
+            return (
+                f"Your DPYD {diplotype} genotype indicates Intermediate "
+                f"Metabolizer phenotype — partial DPD deficiency. CPIC 2017 "
+                f"+ Nov 2018 update: reduce starting {drug_label} dose by "
+                f"50%, with subsequent dose titration based on toxicity and "
+                f"ideally therapeutic drug monitoring. Tegafur is NOT a "
+                f"safe alternative (also DPD-metabolized).{refs}"
+            )
+        # AS=2.0 Normal Metabolizer fallback.
+        return (
+            f"Your DPYD {diplotype} genotype indicates Normal Metabolizer "
+            f"phenotype — full DPD activity expected. Use {drug_label} per "
+            f"standard dosing. Note: the canonical 4-variant European panel "
+            f"may underdetect carriers in non-European populations; if "
+            f"clinically warranted, a phenotyping test (DPD enzyme activity "
+            f"or uracil/dihydrouracil ratio) is the gold-standard backstop "
+            f"per CPIC.{refs}"
+        )
     return "Deterministic recommendation produced."
 
 

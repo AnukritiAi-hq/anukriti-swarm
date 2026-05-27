@@ -86,6 +86,48 @@ CPIC_DOCUMENTS: list[BiomedicalDocument] = [
         keywords=["SJS", "TEN", "hypersensitivity", "HLA", "Southeast Asian"],
         citation_id="PMID:24407187", year=2014,
     ),
+    BiomedicalDocument(
+        # The canonical engine-side document for the DPYD/fluoropyrimidine
+        # workflow. Without this, the swarm runtime fires V5 INSUFFICIENT
+        # on every fluorouracil run because no document covers the
+        # (DPYD, fluorouracil) facet pair.
+        doc_id="cpic_dpyd_fluoropyrimidines",
+        source=DocumentSource.CPIC,
+        title="CPIC Guideline for DPYD and Fluoropyrimidines (2017 + Nov 2018 Update)",
+        content=(
+            "Dihydropyrimidine dehydrogenase (DPD) inactivates 80-90% of administered "
+            "5-fluorouracil. Loss-of-function DPYD variants (c.1905+1G>A / *2A, c.1679T>G / *13) "
+            "and decreased-function variants (c.2846A>T, c.1129-5923C>G or its tag c.1236G>A / "
+            "HapB3) increase risk of severe (Grade 3+) fluoropyrimidine toxicity, including "
+            "myelosuppression, mucositis, hand-foot syndrome, and neurotoxicity, with 1-2% "
+            "treatment-related mortality in unscreened carriers. Recommendations are keyed on "
+            "the DPYD activity score (sum of two lowest variant scores): score 2 = Normal "
+            "Metabolizer (standard dose); score 1 or 1.5 = Intermediate Metabolizer (50% dose "
+            "reduction per the November 2018 update, with possible >50% reduction for the "
+            "homozygous c.[2846A>T];[2846A>T] genotype); score 0 or 0.5 = Poor Metabolizer "
+            "(avoid 5-fluorouracil and prodrug-based regimens, including capecitabine and "
+            "tegafur). Tegafur is also DPD-metabolized and is NOT a safe alternative. Uridine "
+            "triacetate (Vistogard) is the FDA-approved rescue for 5-FU overdose. The CPIC "
+            "guideline applies to fluorouracil and capecitabine; tegafur is covered by the "
+            "DPWG guideline (Lunenburg 2020). FDA boxed warning on capecitabine and the NCCN "
+            "colon-cancer guideline now recommend pre-treatment DPYD testing."
+        ),
+        genes=["DPYD"],
+        drugs=["fluorouracil", "5-fluorouracil", "5-FU", "capecitabine", "tegafur"],
+        keywords=[
+            "DPD deficiency",
+            "fluoropyrimidine toxicity",
+            "activity score",
+            "myelosuppression",
+            "mucositis",
+            "hand-foot syndrome",
+            "uridine triacetate",
+            "European",
+            "intermediate metabolizer",
+            "poor metabolizer",
+        ],
+        citation_id="PMID:29152729", year=2018,
+    ),
 ]
 
 # --- PharmGKB Annotations ---
@@ -169,6 +211,88 @@ PUBMED_DOCUMENTS: list[BiomedicalDocument] = [
         genes=["HLA-B"], drugs=["carbamazepine"],
         keywords=["SJS", "TEN", "Southeast Asian", "genetic testing", "cost-effectiveness"],
         citation_id="PMID:36123456", year=2023,
+    ),
+    BiomedicalDocument(
+        # Hariprakash et al. — n>3000 South Asian DPYD landscape paper.
+        # Required so that fluorouracil runs with population=SAS resolve
+        # the POPULATION facet (otherwise the verifier fires V7 / R9
+        # POPULATION UNCERTAIN and produces a soft-refusal). Surfaces the
+        # rs2297595 enrichment finding so the recommendation text can
+        # truthfully cite a SAS-specific source.
+        doc_id="pubmed_dpyd_sas_landscape",
+        source=DocumentSource.PUBMED,
+        title="Pharmacogenetic Landscape of DPYD Variants in South Asian Populations",
+        content=(
+            "Systematic analysis of population-scale genome-wide datasets covering more than "
+            "3,000 South Asian individuals revealed significant differences in the allelic "
+            "distribution of DPYD variants relative to European reference panels. The CPIC "
+            "canonical 4-variant European panel (c.1905+1G>A / *2A; c.1679T>G / *13; "
+            "c.2846A>T; c.1129-5923C>G / HapB3) is calibrated against European cohorts and "
+            "may underdetect carriers in South Asian populations. The normal-function variant "
+            "rs2297595 (c.496A>G, p.Met166Val) is enriched in South Asia, and additional "
+            "South-Asia-prevalent variants of potential clinical relevance to fluoropyrimidine "
+            "toxicity are described. Findings argue for population-aware DPYD genotyping "
+            "panels rather than uniform application of European-derived 4-variant panels in "
+            "South Asian oncology populations. Hariprakash JM et al., 2018."
+        ),
+        genes=["DPYD"],
+        drugs=["fluorouracil", "5-fluorouracil", "5-FU", "capecitabine"],
+        keywords=[
+            "South Asian",
+            "Indian",
+            "allele frequency",
+            "population-specific",
+            "rs2297595",
+            "c.496A>G",
+            "DPYD landscape",
+            "panel coverage",
+        ],
+        citation_id="PMID:29239269", year=2018,
+    ),
+    BiomedicalDocument(
+        # Chan & Pirmohamed 2024 systematic review — the non-European
+        # equity anchor. Populates the POPULATION facet for SAS, EAS,
+        # AFR, and AMR runs of fluorouracil so the runtime produces an
+        # honest PASS_WITH_CAVEAT instead of a soft refusal. Names
+        # c.557A>G (rs115232898) as the AFR-relevant decreased-function
+        # variant the UK NHS 4-variant panel currently misses.
+        doc_id="pubmed_dpyd_non_european",
+        source=DocumentSource.PUBMED,
+        title="DPYD Genetic Polymorphisms in Non-European Patients with Severe Fluoropyrimidine Toxicity",
+        content=(
+            "Systematic review of 53 DPYD variants reported in patients of non-European "
+            "ancestry across five ethnic groups: African American, East Asian, Latin American, "
+            "Middle Eastern, and South Asian. The European canonical no-function variant "
+            "c.1905+1G>A (rs3918290 / *2A) is also present in South Asian, East Asian and "
+            "Middle Eastern patients with severe fluoropyrimidine-related toxicity, although "
+            "at much lower frequencies than in Europeans. The decreased-function variant "
+            "c.557A>G (p.Tyr186Cys, rs115232898) is observed in individuals of African "
+            "ancestry (~2.6% in African-heritage Brazilians) but is currently absent from the "
+            "UK NHS 4-variant DPYD pre-treatment panel. Extending pre-treatment DPYD screening "
+            "to include variants present in non-European ancestry groups is recommended to "
+            "improve patient safety and reduce race-based health inequalities. Chan TH, "
+            "Zhang JE, Pirmohamed M. Br J Cancer 2024;131(3):498-514."
+        ),
+        genes=["DPYD"],
+        drugs=["fluorouracil", "5-fluorouracil", "5-FU", "capecitabine"],
+        keywords=[
+            "non-European",
+            "South Asian",
+            "East Asian",
+            "African American",
+            "African",
+            "Latin American",
+            "Latino",
+            "Hispanic",
+            "Admixed American",
+            "Middle Eastern",
+            "c.557A>G",
+            "rs115232898",
+            "panel coverage",
+            "health equity",
+            "systematic review",
+        ],
+        citation_id="PMID:38886557", year=2024,
     ),
 ]
 

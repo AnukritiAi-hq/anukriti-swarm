@@ -98,6 +98,11 @@ _GENE_CYP2D6 = _node(NodeKind.GENE, "CYP2D6",
 _GENE_HLA_B = _node(NodeKind.GENE, "HLA-B",
                     {"chromosome": "6p21.33"},
                     _stamp("cpic.hla_b.risk_allele", "rule"))
+# DPYD — fluoropyrimidine metabolism gene; CPIC level A for both
+# 5-fluorouracil and capecitabine (PMID:29152729).
+_GENE_DPYD = _node(NodeKind.GENE, "DPYD",
+                   {"chromosome": "1p21.3"},
+                   _stamp("cpic.activity_score", "rule"))
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +141,39 @@ _ALL_HLAB_1502 = _node(NodeKind.ALLELE, "HLA-B*15:02",
                        _stamp("PMID:24407187", "pubmed"))
 
 
+# DPYD alleles — activity scores from CPIC 2017 + Nov 2018 update
+# (PMID:29152729). The four-variant European-canonical panel plus
+# the c.1236G>A HapB3 tag SNP. Allele ids must match the form
+# `allele:DPYD*<suffix>` so _pop_result_for() in core/runtime/runtime.py
+# can match them by simple lstrip("*"); non-star labels (`c.2846A>T`,
+# `HapB3`) are accepted as opaque strings by the indexer.
+_ALL_DPYD_2A = _node(NodeKind.ALLELE, "DPYD*2A",
+                     {"gene": "DPYD", "activity_score": 0.0,
+                      "function": "no_function",
+                      "rsid": "rs3918290",
+                      "hgvs": "c.1905+1G>A"},
+                     _stamp("PMID:29152729", "pubmed"))
+_ALL_DPYD_13 = _node(NodeKind.ALLELE, "DPYD*13",
+                     {"gene": "DPYD", "activity_score": 0.0,
+                      "function": "no_function",
+                      "rsid": "rs55886062",
+                      "hgvs": "c.1679T>G p.Ile560Ser"},
+                     _stamp("PMID:29152729", "pubmed"))
+_ALL_DPYD_2846 = _node(NodeKind.ALLELE, "DPYD*c.2846A>T",
+                       {"gene": "DPYD", "activity_score": 0.5,
+                        "function": "decreased_function",
+                        "rsid": "rs67376798",
+                        "hgvs": "c.2846A>T p.Asp949Val"},
+                       _stamp("PMID:29152729", "pubmed"))
+_ALL_DPYD_HAPB3 = _node(NodeKind.ALLELE, "DPYD*HapB3",
+                        {"gene": "DPYD", "activity_score": 0.5,
+                         "function": "decreased_function",
+                         "rsid_proxy": "rs56038477",
+                         "rsid_causal": "rs75017182",
+                         "hgvs": "c.1129-5923C>G (tagged by c.1236G>A)"},
+                        _stamp("PMID:29152729", "pubmed"))
+
+
 # ---------------------------------------------------------------------------
 # Phenotypes (from rules/phenotype_rules.py PHENOTYPE_RANGES)
 # ---------------------------------------------------------------------------
@@ -153,6 +191,20 @@ _PHEN_CYP2D6_PM = _node(NodeKind.PHENOTYPE, "CYP2D6 Poor Metabolizer",
 _PHEN_HLAB_POS = _node(NodeKind.PHENOTYPE, "HLA-B*15:02 positive",
                        {"gene": "HLA-B", "carrier_status": "positive"},
                        _stamp("cpic.hla_b.risk_allele", "rule"))
+
+
+# DPYD phenotypes — CPIC 2017 + Nov 2018 update activity-score buckets.
+# Note: AS=1.0 and AS=1.5 both map to Intermediate Metabolizer per the
+# Nov 2018 update (collapsed to a single 50% dose-reduction bucket).
+_PHEN_DPYD_NM = _node(NodeKind.PHENOTYPE, "DPYD Normal Metabolizer",
+                      {"gene": "DPYD", "score_range": [2.0, 2.0]},
+                      _stamp("cpic.activity_score", "rule"))
+_PHEN_DPYD_IM = _node(NodeKind.PHENOTYPE, "DPYD Intermediate Metabolizer",
+                      {"gene": "DPYD", "score_range": [1.0, 1.5]},
+                      _stamp("cpic.activity_score", "rule"))
+_PHEN_DPYD_PM = _node(NodeKind.PHENOTYPE, "DPYD Poor Metabolizer",
+                      {"gene": "DPYD", "score_range": [0.0, 0.5]},
+                      _stamp("cpic.activity_score", "rule"))
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +232,18 @@ _DRUG_CBZ = _node(NodeKind.DRUG, "carbamazepine",
                   _stamp("CPIC:HLA-B:carbamazepine:2014", "cpic"))
 
 
+# Fluoropyrimidines — capecitabine is the oral prodrug of 5-fluorouracil.
+_DRUG_5FU = _node(NodeKind.DRUG, "fluorouracil",
+                  {"class": "fluoropyrimidine", "antimetabolite": True,
+                   "aliases": ["5-FU", "5-fluorouracil"]},
+                  _stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic"))
+_DRUG_CAPECITABINE = _node(NodeKind.DRUG, "capecitabine",
+                           {"class": "fluoropyrimidine",
+                            "prodrug": True,
+                            "active_metabolite": "fluorouracil"},
+                           _stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic"))
+
+
 # ---------------------------------------------------------------------------
 # Adverse reactions
 # ---------------------------------------------------------------------------
@@ -197,6 +261,16 @@ _ADR_RESP_DEP = _node(NodeKind.ADVERSE_REACTION, "respiratory depression",
                       _stamp("CPIC:CYP2D6:codeine:2023", "cpic"))
 
 
+_ADR_FP_TOX = _node(
+    NodeKind.ADVERSE_REACTION,
+    "fluoropyrimidine toxicity",
+    {"severity": "grade_3_to_5",
+     "manifestations": "myelosuppression, mucositis, hand-foot syndrome, neurotoxicity",
+     "fatal_rate": "~1-2% in unscreened DPD-deficient carriers"},
+    _stamp("PMID:29152729", "pubmed"),
+)
+
+
 # ---------------------------------------------------------------------------
 # Guidelines
 # ---------------------------------------------------------------------------
@@ -211,6 +285,9 @@ _GL_CYP2D6_COD = _node(NodeKind.GUIDELINE, "CPIC:CYP2D6:codeine:2023",
 _GL_HLAB_CBZ = _node(NodeKind.GUIDELINE, "CPIC:HLA-B:carbamazepine:2014",
                      {"version": "2014.1", "strength": "strong"},
                      _stamp("CPIC:HLA-B:carbamazepine:2014", "cpic"))
+_GL_DPYD_FP = _node(NodeKind.GUIDELINE, "CPIC:DPYD:fluoropyrimidines:2017",
+                    {"version": "2018.1", "strength": "strong"},
+                    _stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic"))
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +319,18 @@ _EV_PMID_36123456 = _node(NodeKind.EVIDENCE_PAPER, "PMID:36123456",
                           {"year": 2023, "title":
                            "HLA-B*15:02 Prevalence in Southeast Asia"},
                           _stamp("PMID:36123456", "pubmed"))
+_EV_PMID_29152729 = _node(NodeKind.EVIDENCE_PAPER, "PMID:29152729",
+                          {"year": 2018, "title":
+                           "CPIC Guideline for DPYD and Fluoropyrimidines (2017 + Nov 2018)"},
+                          _stamp("PMID:29152729", "pubmed"))
+_EV_PMID_29239269 = _node(NodeKind.EVIDENCE_PAPER, "PMID:29239269",
+                          {"year": 2018, "title":
+                           "Pharmacogenetic Landscape of DPYD in South Asian Populations"},
+                          _stamp("PMID:29239269", "pubmed"))
+_EV_PMID_38886557 = _node(NodeKind.EVIDENCE_PAPER, "PMID:38886557",
+                          {"year": 2024, "title":
+                           "DPYD Polymorphisms in Non-European Patients with Severe FP Toxicity"},
+                          _stamp("PMID:38886557", "pubmed"))
 
 
 # ---------------------------------------------------------------------------
@@ -253,23 +342,27 @@ SEED_NODES: list[Node] = [
     # populations
     *_POPS,
     # genes
-    _GENE_CYP2C19, _GENE_CYP2D6, _GENE_HLA_B,
+    _GENE_CYP2C19, _GENE_CYP2D6, _GENE_HLA_B, _GENE_DPYD,
     # alleles
     _ALL_CYP2C19_2, _ALL_CYP2C19_3, _ALL_CYP2C19_17,
     _ALL_CYP2D6_4, _ALL_CYP2D6_10, _ALL_CYP2D6_17,
     _ALL_HLAB_1502,
+    _ALL_DPYD_2A, _ALL_DPYD_13, _ALL_DPYD_2846, _ALL_DPYD_HAPB3,
     # phenotypes
     _PHEN_CYP2C19_PM, _PHEN_CYP2C19_IM, _PHEN_CYP2D6_PM, _PHEN_HLAB_POS,
+    _PHEN_DPYD_NM, _PHEN_DPYD_IM, _PHEN_DPYD_PM,
     # drugs
     _DRUG_CLOPIDOGREL, _DRUG_PRASUGREL, _DRUG_TICAGRELOR,
     _DRUG_CODEINE, _DRUG_MORPHINE, _DRUG_CBZ,
+    _DRUG_5FU, _DRUG_CAPECITABINE,
     # adverse reactions
-    _ADR_MACE, _ADR_SJS_TEN, _ADR_RESP_DEP,
+    _ADR_MACE, _ADR_SJS_TEN, _ADR_RESP_DEP, _ADR_FP_TOX,
     # guidelines
-    _GL_CYP2C19_CLOP, _GL_CYP2D6_COD, _GL_HLAB_CBZ,
+    _GL_CYP2C19_CLOP, _GL_CYP2D6_COD, _GL_HLAB_CBZ, _GL_DPYD_FP,
     # evidence
     _EV_PMID_34032273, _EV_PMID_32722396, _EV_PMID_24407187,
     _EV_PA_166169660, _EV_PMID_35891234, _EV_PMID_36123456,
+    _EV_PMID_29152729, _EV_PMID_29239269, _EV_PMID_38886557,
 ]
 
 
@@ -432,6 +525,166 @@ _edges_guideline_rec = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# DPYD / fluoropyrimidine edges (CPIC 2017 + Nov 2018 update; PMID:29152729)
+# ---------------------------------------------------------------------------
+
+# METABOLIZES: DPYD inactivates 5-FU (and capecitabine via 5-FU)
+_edges_dpyd_metabolizes = [
+    _edge(_GENE_DPYD, _DRUG_5FU, EdgeKind.METABOLIZES,
+          payload={"direction": "inactivation",
+                   "fraction": "80-90% of administered 5-FU"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+    _edge(_GENE_DPYD, _DRUG_CAPECITABINE, EdgeKind.METABOLIZES,
+          payload={"direction": "inactivation_via_5fu",
+                   "note": "capecitabine -> 5-FU -> DPD-mediated catabolism"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+]
+
+# CONTRAINDICATED_FOR: DPYD PM strongly avoids; IM dose-reduce 50%
+_edges_dpyd_contra = [
+    _edge(_PHEN_DPYD_PM, _DRUG_5FU, EdgeKind.CONTRAINDICATED_FOR,
+          payload={"strength": "strong", "action": "avoid",
+                   "fallback": "if no alternative: <25% of standard dose + therapeutic drug monitoring"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+    _edge(_PHEN_DPYD_PM, _DRUG_CAPECITABINE, EdgeKind.CONTRAINDICATED_FOR,
+          payload={"strength": "strong", "action": "avoid"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+    _edge(_PHEN_DPYD_IM, _DRUG_5FU, EdgeKind.CONTRAINDICATED_FOR,
+          payload={"strength": "moderate", "action": "dose_reduce_50_pct",
+                   "note": "CPIC Nov 2018: AS=1.0 and AS=1.5 both 50%"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+    _edge(_PHEN_DPYD_IM, _DRUG_CAPECITABINE, EdgeKind.CONTRAINDICATED_FOR,
+          payload={"strength": "moderate", "action": "dose_reduce_50_pct"},
+          stamp=_stamp("CPIC:DPYD:fluoropyrimidines:2017", "cpic")),
+]
+
+# ASSOCIATED_WITH:
+#   drug -> adverse reaction
+#   allele -> phenotype (activity-score additive rule)
+_edges_dpyd_assoc = [
+    _edge(_DRUG_5FU, _ADR_FP_TOX, EdgeKind.ASSOCIATED_WITH,
+          payload={"mechanism": "DPD_deficiency_5FU_accumulation"},
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_DRUG_CAPECITABINE, _ADR_FP_TOX, EdgeKind.ASSOCIATED_WITH,
+          payload={"mechanism": "DPD_deficiency_5FU_accumulation"},
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    # No-function alleles -> PM (homozygous combinations)
+    _edge(_ALL_DPYD_2A, _PHEN_DPYD_PM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "homozygous_or_compound_no_function"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_DPYD_13, _PHEN_DPYD_PM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "homozygous_or_compound_no_function"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    # Decreased-function alleles -> IM
+    _edge(_ALL_DPYD_2846, _PHEN_DPYD_IM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.5,
+                   "via": "diplotype_IM_when_heterozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_DPYD_HAPB3, _PHEN_DPYD_IM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.5,
+                   "via": "diplotype_IM_when_heterozygous"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    # No-function het + wildtype -> IM (also covered by activity score)
+    _edge(_ALL_DPYD_2A, _PHEN_DPYD_IM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_IM_when_heterozygous_with_wildtype"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+    _edge(_ALL_DPYD_13, _PHEN_DPYD_IM, EdgeKind.ASSOCIATED_WITH,
+          payload={"activity_score_contribution": 0.0,
+                   "via": "diplotype_IM_when_heterozygous_with_wildtype"},
+          stamp=_stamp("cpic.activity_score", "rule")),
+]
+
+# HIGHER_FREQUENCY_IN: gnomAD v4.0 numbers from
+# datasets/pharmfreq/allele_frequencies.py — these populate
+# _pop_result_for() in core/runtime/runtime.py so the POPULATION facet
+# can resolve for any cohort run that lands on a non-wildtype DPYD
+# allele. Sample sizes per population per gnomAD v4.0:
+#   SAS=15308, AFR=20744, EUR=64603, EAS=9197, AMR=7647.
+_edges_dpyd_freq = [
+    # *2A (no function) — EUR-enriched
+    _edge(_ALL_DPYD_2A, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.012, payload={"note": "splice donor c.1905+1G>A; canonical European panel"},
+          stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2A, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.006, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2A, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.005, payload={"note": "present in SAS but lower than EUR; Hariprakash 2018"},
+          stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2A, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2A, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    # *13 (no function) — globally rare
+    _edge(_ALL_DPYD_13, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.002, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_13, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_13, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_13, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_13, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    # c.2846A>T (decreased function) — EUR-enriched
+    _edge(_ALL_DPYD_2846, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.006, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2846, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.004, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2846, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.003, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2846, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_2846, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    # HapB3 (decreased function) — EUR-enriched (~2.2%)
+    _edge(_ALL_DPYD_HAPB3, _POP_EUR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.022, payload={"note": "tagged by c.1236G>A rs56038477"},
+          stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_HAPB3, _POP_AMR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.010, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_HAPB3, _POP_SAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.005, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_HAPB3, _POP_AFR, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.002, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+    _edge(_ALL_DPYD_HAPB3, _POP_EAS, EdgeKind.HIGHER_FREQUENCY_IN,
+          weight=0.001, stamp=_stamp("gnomAD:v4.0", "gnomad")),
+]
+
+# SUPPORTED_BY: hook the new evidence papers to DPYD nodes
+_edges_dpyd_supported = [
+    _edge(_PHEN_DPYD_PM, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_PHEN_DPYD_IM, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_PHEN_DPYD_NM, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_ALL_DPYD_2A, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_ALL_DPYD_13, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_ALL_DPYD_2846, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    _edge(_ALL_DPYD_HAPB3, _EV_PMID_29152729, EdgeKind.SUPPORTED_BY,
+          stamp=_stamp("PMID:29152729", "pubmed")),
+    # Equity anchors
+    _edge(_GENE_DPYD, _EV_PMID_29239269, EdgeKind.SUPPORTED_BY,
+          payload={"context": "South Asian DPYD landscape"},
+          stamp=_stamp("PMID:29239269", "pubmed")),
+    _edge(_GENE_DPYD, _EV_PMID_38886557, EdgeKind.SUPPORTED_BY,
+          payload={"context": "non-European systematic review"},
+          stamp=_stamp("PMID:38886557", "pubmed")),
+]
+
+# GUIDELINE_RECOMMENDS: alternatives for DPYD PM (avoid 5-FU/cape; tegafur
+# also DPD-metabolised so NOT a safe alternative — represented as
+# explicit absence rather than a positive edge to avoid implying
+# substitutability the CPIC guideline forbids).
+
+
 SEED_EDGES: list[Edge] = (
     _edges_metabolizes
     + _edges_contra
@@ -439,6 +692,11 @@ SEED_EDGES: list[Edge] = (
     + _edges_freq
     + _edges_supported
     + _edges_guideline_rec
+    + _edges_dpyd_metabolizes
+    + _edges_dpyd_contra
+    + _edges_dpyd_assoc
+    + _edges_dpyd_freq
+    + _edges_dpyd_supported
 )
 
 
