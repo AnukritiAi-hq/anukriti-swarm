@@ -441,8 +441,6 @@ function renderLiveStart(scope) {
   if (banner) banner.classList.add("hidden");
   // Reset the cinematic stage cards for this new run.
   resetStageCards();
-  // Reset the Swarm Agents roster for this new run.
-  resetAgentRoster();
 }
 
 function renderRunError(err) {
@@ -457,9 +455,6 @@ function renderRunError(err) {
 
 function renderFromReport(report, events) {
   renderTraceFromEvents(events || []);
-  // On the non-streaming (fetch) path there are no live events to drive
-  // the roster, so settle it from the report's final state.
-  settleAgentRosterFromReport(report);
   renderAbstentionMode(report);
   renderSufficiencyPanel(report);
   renderPopulationIntel(report);
@@ -1322,93 +1317,6 @@ function renderTrioColumn(index, scenario, report) {
 // though the underlying runtime finishes in ~5ms. Labeled as
 // presentation pacing in the UI, not disguised as computation.
 
-// ---------------------------------------------------------------------------
-// Swarm Agents roster — one card per specialist that the runtime
-// activates (AGENT_ACTIVATED events). Each lights up in sequence so the
-// swarm is visibly seen working one agent at a time. Pure presentation
-// over the live event stream; no runtime change.
-// ---------------------------------------------------------------------------
-
-const AGENT_ROSTER = [
-  { id: "orchestrator",              icon: "◎", title: "Orchestrator",          task: "Validates the query and dispatches specialists" },
-  { id: "population_aware_retriever", icon: "⚙", title: "Population Retriever",  task: "Searches evidence weighted by ancestry" },
-  { id: "graph_reasoner",            icon: "◈", title: "Graph Reasoner",        task: "Traverses the pharmacogenomic knowledge graph" },
-  { id: "sufficiency_checkpoint",    icon: "✓", title: "Sufficiency Verifier",  task: "Checks coverage, conflict, uncertainty, bias" },
-  { id: "narrative_agent",           icon: "✎", title: "Narrative Synthesizer", task: "Writes the recommendation or refuses safely" },
-];
-
-// Maps a recorded agent name from the runtime to a roster card. The
-// runtime emits orchestrator / population_aware_retriever / graph_reasoner;
-// the sufficiency + synthesis stages are mapped from their stage events.
-function ensureAgentRoster() {
-  const container = document.getElementById("agent-roster");
-  if (!container) return null;
-  if (container.childElementCount > 0) return container;
-  container.innerHTML = AGENT_ROSTER.map((a, i) => `
-    <div class="agent-card" data-agent="${a.id}" data-state="pending">
-      <div class="agent-card-icon">${a.icon}</div>
-      <div class="agent-card-body">
-        <div class="agent-card-title">
-          <span class="agent-card-index">${i + 1}</span>${a.title}
-        </div>
-        <div class="agent-card-task">${a.task}</div>
-      </div>
-      <div class="agent-card-status">idle</div>
-    </div>
-  `).join("");
-  return container;
-}
-
-function resetAgentRoster() {
-  ensureAgentRoster();
-  AGENT_ROSTER.forEach(a => setAgentState(a.id, "pending", "idle"));
-  const section = document.getElementById("swarm-agents-section");
-  if (section) section.classList.remove("hidden");
-}
-
-function setAgentState(agentId, state, statusText) {
-  const card = document.querySelector(`.agent-card[data-agent="${agentId}"]`);
-  if (!card) return;
-  card.dataset.state = state;
-  const status = card.querySelector(".agent-card-status");
-  if (status && statusText) status.textContent = statusText;
-}
-
-// Mark every agent before `agentId` as done, the target as working.
-// Keeps the roster reading as a clean left-to-right progression even if
-// an event for an intermediate agent is coalesced.
-function activateAgent(agentId) {
-  const idx = AGENT_ROSTER.findIndex(a => a.id === agentId);
-  if (idx === -1) return;
-  AGENT_ROSTER.forEach((a, i) => {
-    if (i < idx) setAgentState(a.id, "done", "done ✓");
-  });
-  setAgentState(agentId, "working", "working…");
-}
-
-function completeAgentRoster(abstained) {
-  // Final event: everything still working/pending settles to done
-  // (or 'refused' for the synthesizer on a safe abstention).
-  AGENT_ROSTER.forEach(a => {
-    const card = document.querySelector(`.agent-card[data-agent="${a.id}"]`);
-    if (!card) return;
-    if (a.id === "narrative_agent" && abstained) {
-      setAgentState(a.id, "abstained", "refused ✗");
-    } else if (card.dataset.state !== "abstained") {
-      setAgentState(a.id, "done", "done ✓");
-    }
-  });
-}
-
-// Non-streaming path: settle the roster directly from a completed
-// report (no live events to animate through).
-function settleAgentRosterFromReport(report) {
-  resetAgentRoster();
-  const rec = (report && report.final_recommendation) || {};
-  const abstained = rec.allows_synthesis === false;
-  completeAgentRoster(abstained);
-}
-
 const STAGES = [
   {
     id: "orchestration", title: "Orchestration",
@@ -1494,18 +1402,6 @@ function setStageOutput(stageId, html) {
 function applyEventToStages(event) {
   const kind = event.kind;
   const p = event.payload || {};
-
-  // Drive the Swarm Agents roster: light up the specialist responsible
-  // for this event, one at a time. The runtime emits agent_activated for
-  // the first three; the last two are mapped from their stage events.
-  switch (kind) {
-    case "agent_activated":      activateAgent(p.agent); break;
-    case "sufficiency_decision": activateAgent("sufficiency_checkpoint"); break;
-    case "synthesis_emitted":    activateAgent("narrative_agent"); break;
-    case "safe_abstention":      activateAgent("narrative_agent"); break;
-    case "run_completed":        completeAgentRoster(false); break;
-    case "run_failed":           completeAgentRoster(true); break;
-  }
 
   // Find the stage this event belongs to (or that should be 'done' on
   // this event). Multiple stages can react to the same event kind —
