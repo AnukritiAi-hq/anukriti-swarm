@@ -27,6 +27,14 @@
             </div>
         </section>
 
+        <!-- Swarm Agents roster — lights up one specialist per
+             AGENT_ACTIVATED event so the swarm is seen working in
+             sequence. Populated by swarm-viz.js from live events. -->
+        <section class="card hidden" id="swarm-agents-section">
+            <h2>Swarm Agents</h2>
+            <div class="agent-roster" id="agent-roster"></div>
+        </section>
+
         <!-- Cinematic Stage Cards (session #7 cinematic pass) -->
         <!-- Shows each lifecycle stage as its event arrives. Each card
              has a 'working' state until the corresponding RuntimeEvent

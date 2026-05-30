@@ -488,6 +488,80 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ---- Swarm Agents roster ---- */
+.agent-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.agent-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  transition: border-color 0.2s, opacity 0.3s, transform 0.2s, box-shadow 0.3s;
+}
+.agent-card[data-state="pending"] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+.agent-card[data-state="working"] {
+  opacity: 1;
+  border-color: var(--accent-cyan);
+  border-left-color: var(--accent-cyan);
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.3),
+              0 0 18px rgba(6, 182, 212, 0.15);
+  animation: stage-working-pulse 1.2s ease-in-out infinite;
+}
+.agent-card[data-state="done"] {
+  opacity: 1;
+  border-left-color: var(--accent-green);
+}
+.agent-card[data-state="abstained"] {
+  opacity: 1;
+  border-left-color: var(--accent-red);
+}
+.agent-card-icon {
+  font-size: 1.3rem;
+  width: 1.8rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.agent-card[data-state="working"] .agent-card-icon {
+  animation: stage-icon-spin 1.4s linear infinite;
+}
+.agent-card-body { flex: 1; min-width: 0; }
+.agent-card-title {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.agent-card-index {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+.agent-card-task {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.agent-card-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.agent-card[data-state="working"] .agent-card-status { color: var(--accent-cyan); }
+.agent-card[data-state="done"] .agent-card-status { color: var(--accent-green); }
+.agent-card[data-state="abstained"] .agent-card-status { color: var(--accent-red); }
+
 .stage-card-description {
   font-size: 0.75rem;
   color: var(--text-secondary);
