@@ -12,7 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from datasets.pharmfreq.allele_frequencies import ALL_FREQUENCIES, AlleleFrequencyRecord
+from datasets.pharmfreq.allele_frequencies import (
+    ALL_FREQUENCIES,
+    GNOMAD_FREQUENCIES,
+    SGDP_FREQUENCIES,
+    AlleleFrequencyRecord,
+)
 
 
 @dataclass(frozen=True)
@@ -38,8 +43,20 @@ class FrequencyStore:
     All lookups are deterministic and return provenance metadata.
     """
 
-    def __init__(self, records: list[AlleleFrequencyRecord] | None = None) -> None:
-        self._records = records or ALL_FREQUENCIES
+    def __init__(
+        self,
+        records: list[AlleleFrequencyRecord] | None = None,
+        use_gnomad: bool = False,
+        use_sgdp: bool = False,
+    ) -> None:
+        self._records = list(records) if records is not None else list(ALL_FREQUENCIES)
+        # Overlay real BigQuery-ingested frequencies (pinned artifacts) when
+        # opted in; later records win on a shared (gene, allele, population)
+        # key. Off by default to preserve byte-identical demo signatures.
+        if use_gnomad:
+            self._records += GNOMAD_FREQUENCIES
+        if use_sgdp:
+            self._records += SGDP_FREQUENCIES
         self._index: dict[tuple[str, str, str], AlleleFrequencyRecord] = {}
         self._build_index()
 

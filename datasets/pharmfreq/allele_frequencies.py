@@ -535,3 +535,54 @@ ALL_FREQUENCIES = (
     + VKORC1_FREQUENCIES
     + SLCO1B1_FREQUENCIES
 )
+
+
+# --- Real gnomAD frequencies (pinned BigQuery artifact) ---
+#
+# Loaded from the offline-ingested JSONL artifact produced by
+# scripts/ingest_gnomad_frequencies.py. Real per-population allele
+# frequencies from gnomAD v2.1.1 (exomes + genomes fallback), with real
+# sample sizes and source/version provenance. Kept separate from the
+# curated ALL_FREQUENCIES so the byte-identical demo contract is
+# preserved; opt in via FrequencyStore(use_gnomad=True).
+
+import json as _json
+from pathlib import Path as _Path
+
+_DATA_DIR = _Path(__file__).resolve().parent
+
+
+def _load_artifact(filename: str) -> list[AlleleFrequencyRecord]:
+    """Load a pinned offline-ingested JSONL frequency artifact.
+
+    Returns an empty list if the artifact is absent (artifacts are
+    offline-generated and may not be present in every checkout).
+    """
+    path = _DATA_DIR / filename
+    if not path.exists():
+        return []
+    out: list[AlleleFrequencyRecord] = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        d = _json.loads(line)
+        out.append(AlleleFrequencyRecord(
+            gene=d["gene"], allele=d["allele"], population=d["population"],
+            frequency=d["frequency"], sample_n=d["sample_n"],
+            source=d["source"], version=d["version"], function=d["function"],
+        ))
+    return out
+
+
+def load_gnomad_frequencies() -> list[AlleleFrequencyRecord]:
+    """Load the pinned gnomAD v2.1.1 BigQuery artifact."""
+    return _load_artifact("gnomad_v2_1_1_frequencies.jsonl")
+
+
+def load_sgdp_frequencies() -> list[AlleleFrequencyRecord]:
+    """Load the pinned SGDP (127-population) BigQuery artifact."""
+    return _load_artifact("sgdp_frequencies.jsonl")
+
+
+GNOMAD_FREQUENCIES: list[AlleleFrequencyRecord] = load_gnomad_frequencies()
+SGDP_FREQUENCIES: list[AlleleFrequencyRecord] = load_sgdp_frequencies()
