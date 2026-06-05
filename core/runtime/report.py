@@ -100,6 +100,7 @@ class UnifiedExecutionReport:
 
     total_duration_ms: float = 0.0
     errors: tuple[str, ...] = ()
+    grounded_narrative: dict[str, Any] | None = None
 
     report_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -158,6 +159,7 @@ class UnifiedExecutionReport:
             final_recommendation=recommendation,
             total_duration_ms=round(float(total_duration_ms), 3),
             errors=tuple(ctx.errors),
+            grounded_narrative=(ctx.narrative_output or {}).get("grounded"),
         )
 
     # ------------------------------------------------------------------

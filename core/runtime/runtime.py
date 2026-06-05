@@ -93,6 +93,10 @@ class SwarmRuntime:
 
     event_stream: EventStream = field(default_factory=InMemoryEventStream)
 
+    # Off-by-default LLM grounded synthesis. Set to "llm_grounded" to
+    # run LLMNarrator after the deterministic Stage 5.
+    synthesis_mode: str | None = None
+
     # Lazily-built shared components. Build once per SwarmRuntime;
     # reuse across ``run()`` invocations. Exposed on the instance so
     # tests can introspect.
@@ -438,6 +442,58 @@ class SwarmRuntime:
                 "patient_excerpt": ctx.narrative_output.get("patient", "")[:120],
             },
         )
+
+        # T9: opt-in LLM grounded synthesis after deterministic narrative.
+        if self.synthesis_mode == "llm_grounded":
+            self._run_llm_grounded_synthesis(ctx, citations)
+
+    def _run_llm_grounded_synthesis(
+        self,
+        ctx: "UnifiedExecutionContext",
+        citations: list[Any],
+    ) -> None:
+        """Run LLMNarrator to produce a citation-validated grounded narrative."""
+        try:
+            from ai.narrative.llm_narrator import LLMNarrator
+
+            evidence_records = [
+                {
+                    "source": c.get("source", "unknown"),
+                    "source_id": c.get("source_id", c.get("pmid", "")),
+                    "claim": c.get("claim", c.get("text", "")),
+                }
+                for c in citations
+            ]
+
+            narrator = LLMNarrator(client=None, audience="clinician")
+            result = narrator.narrate(
+                gene=ctx.gene,
+                drug=ctx.drug,
+                population=ctx.population.value,
+                phenotype=ctx.narrative_output.get("researcher", "")[:50] if ctx.narrative_output else "",
+                evidence_records=evidence_records,
+            )
+
+            ctx.narrative_output["grounded"] = {
+                "text": result.text,
+                "citations": list(result.citations),
+                "validation": {
+                    "verdict": result.validation.verdict.value,
+                    "total_sentences": result.validation.total_sentences,
+                    "cited_sentences": result.validation.cited_sentences,
+                    "uncited_claims": list(result.validation.uncited_claims),
+                },
+                "chemistry_context": result.chemistry_context,
+                "model": result.model,
+                "latency_ms": result.latency_ms,
+            }
+            self._emit(
+                RuntimeEventKind.SYNTHESIS_EMITTED,
+                ctx,
+                payload={"grounded": True, "model": result.model},
+            )
+        except Exception as exc:
+            ctx.record_error(f"llm_grounded_synthesis: {exc!r}")
 
 
 # ---------------------------------------------------------------------------
