@@ -57,8 +57,13 @@ class BasePopulationReasoningAgent:
     population_code: str = ""
     population_name: str = ""
 
-    def __init__(self) -> None:
-        self.store = FrequencyStore()
+    def __init__(
+        self,
+        *,
+        use_gnomad: bool = False,
+        use_sgdp: bool = False,
+    ) -> None:
+        self.store = FrequencyStore(use_gnomad=use_gnomad, use_sgdp=use_sgdp)
         self.agent_id = f"population_{self.population_code.lower()}"
 
     def reason(self, gene: str, allele: str) -> PopulationReasoningResult:

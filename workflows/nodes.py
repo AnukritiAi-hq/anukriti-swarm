@@ -7,6 +7,7 @@ All outputs carry provenance and are deterministic.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from agents.pharmacogene.cyp2c19 import CYP2C19Agent
@@ -21,8 +22,15 @@ from verification.engine import VerificationEngine
 # State type alias
 State = dict[str, Any]
 
+# Off-by-default: set ANUKRITI_REAL_FREQUENCIES=1 to overlay gnomAD/SGDP data.
+_USE_REAL = os.environ.get("ANUKRITI_REAL_FREQUENCIES", "") == "1"
+
 # Pre-instantiate agents (stateless, reusable)
-_POPULATION_AGENTS = {"SAS": SASPopulationAgent(), "AFR": AFRPopulationAgent(), "EUR": EURPopulationAgent()}
+_POPULATION_AGENTS = {
+    "SAS": SASPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+    "AFR": AFRPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+    "EUR": EURPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+}
 _PHARMACOGENE_AGENTS = {"CYP2C19": CYP2C19Agent(), "CYP2D6": CYP2D6Agent()}
 _PLANNER = QueryPlanner()
 _RETRIEVER = EvidenceRetriever()

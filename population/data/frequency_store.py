@@ -52,11 +52,13 @@ class FrequencyStore:
         self._records = list(records) if records is not None else list(ALL_FREQUENCIES)
         # Overlay real BigQuery-ingested frequencies (pinned artifacts) when
         # opted in; later records win on a shared (gene, allele, population)
-        # key. Off by default to preserve byte-identical demo signatures.
-        if use_gnomad:
-            self._records += GNOMAD_FREQUENCIES
+        # key. gnomAD has larger sample sizes (8k–56k) so it overlays last
+        # (wins over SGDP n=22–75). SGDP adds coverage for variants/pops
+        # absent from gnomAD. Off by default to preserve byte-identical demos.
         if use_sgdp:
             self._records += SGDP_FREQUENCIES
+        if use_gnomad:
+            self._records += GNOMAD_FREQUENCIES
         self._index: dict[tuple[str, str, str], AlleleFrequencyRecord] = {}
         self._build_index()
 

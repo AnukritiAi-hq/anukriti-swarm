@@ -9,6 +9,7 @@ Deterministic core remains authoritative — ADK provides the coordination layer
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from agents.pharmacogene.cyp2c19 import CYP2C19Agent
@@ -20,6 +21,9 @@ from retrieval.planner.query_planner import QueryPlanner
 from retrieval.evidence.synthesizer import EvidenceSynthesizer
 from verification.engine import VerificationEngine
 
+# Off-by-default: set ANUKRITI_REAL_FREQUENCIES=1 to overlay gnomAD/SGDP data.
+_USE_REAL = os.environ.get("ANUKRITI_REAL_FREQUENCIES", "") == "1"
+
 
 # --- ADK Tool Functions ---
 # Each function is a tool that the Gemini orchestrator can invoke.
@@ -30,7 +34,11 @@ def tool_population_analysis(gene: str, allele: str, population: str) -> dict[st
     Returns frequency, rarity, clinical note, and prevalence data.
     DETERMINISTIC — no LLM involved.
     """
-    agents = {"SAS": SASPopulationAgent(), "AFR": AFRPopulationAgent(), "EUR": EURPopulationAgent()}
+    agents = {
+        "SAS": SASPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+        "AFR": AFRPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+        "EUR": EURPopulationAgent(use_gnomad=_USE_REAL, use_sgdp=_USE_REAL),
+    }
     agent = agents.get(population)
     if not agent:
         return {"error": f"Unknown population: {population}", "origin": "deterministic"}

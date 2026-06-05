@@ -9,20 +9,28 @@ reasoning outputs depending on population context:
 - SAS: moderate, standard guidelines apply
 
 Run: python -m demos.population_reasoning_demo
+     python -m demos.population_reasoning_demo --real   # gnomAD + SGDP overlay
 """
 
 from __future__ import annotations
+
+import sys
 
 from population.agents import AFRPopulationAgent, EURPopulationAgent, SASPopulationAgent
 
 
 def run_demo() -> None:
+    use_real = "--real" in sys.argv
+    freq_kwargs = {"use_gnomad": use_real, "use_sgdp": use_real}
+
     print("=" * 70)
     print("🧬 ANUKRITI SWARM — Population Reasoning Demo")
     print("   'Population is reasoning context, not metadata.'")
+    if use_real:
+        print("   ⚡ REAL FREQUENCIES: gnomAD v2.1.1 + SGDP overlay active")
     print("=" * 70)
 
-    agents = [SASPopulationAgent(), AFRPopulationAgent(), EURPopulationAgent()]
+    agents = [SASPopulationAgent(**freq_kwargs), AFRPopulationAgent(**freq_kwargs), EURPopulationAgent(**freq_kwargs)]
 
     # --- Demo 1: Same allele, different populations ---
     print("\n" + "=" * 70)
@@ -74,7 +82,7 @@ def run_demo() -> None:
     print("DEMO 4: Full provenance trail (auditability)")
     print("=" * 70)
 
-    sas = SASPopulationAgent()
+    sas = SASPopulationAgent(**freq_kwargs)
     result = sas.reason("CYP2D6", "*4")
     print(f"\n  Query: CYP2D6 *4 in SAS")
     print(f"  Agent ID: {result.agent_id}")

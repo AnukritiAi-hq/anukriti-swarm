@@ -555,23 +555,29 @@ _DATA_DIR = _Path(__file__).resolve().parent
 def _load_artifact(filename: str) -> list[AlleleFrequencyRecord]:
     """Load a pinned offline-ingested JSONL frequency artifact.
 
-    Returns an empty list if the artifact is absent (artifacts are
-    offline-generated and may not be present in every checkout).
+    Deduplicates on (gene, allele, population), keeping the record with
+    the higher frequency (exomes > genomes fallback). Returns an empty
+    list if the artifact is absent (artifacts are offline-generated and
+    may not be present in every checkout).
     """
     path = _DATA_DIR / filename
     if not path.exists():
         return []
-    out: list[AlleleFrequencyRecord] = []
+    best: dict[tuple[str, str, str], AlleleFrequencyRecord] = {}
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
         d = _json.loads(line)
-        out.append(AlleleFrequencyRecord(
+        rec = AlleleFrequencyRecord(
             gene=d["gene"], allele=d["allele"], population=d["population"],
             frequency=d["frequency"], sample_n=d["sample_n"],
             source=d["source"], version=d["version"], function=d["function"],
-        ))
-    return out
+        )
+        key = (rec.gene, rec.allele, rec.population)
+        prev = best.get(key)
+        if prev is None or rec.frequency > prev.frequency:
+            best[key] = rec
+    return list(best.values())
 
 
 def load_gnomad_frequencies() -> list[AlleleFrequencyRecord]:
