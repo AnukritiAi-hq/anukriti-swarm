@@ -318,6 +318,7 @@ class UnifiedExecutionReport:
             "final_recommendation": dict(self.final_recommendation),
             "total_duration_ms": self.total_duration_ms,
             "errors": list(self.errors),
+            "grounded_narrative": self.grounded_narrative,
         }
 
 

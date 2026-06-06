@@ -457,7 +457,9 @@ class SwarmRuntime:
             from ai.narrative.llm_narrator import LLMNarrator
 
             evidence_records = [
-                {
+                {"source": c, "source_id": c, "claim": c}
+                if isinstance(c, str)
+                else {
                     "source": c.get("source", "unknown"),
                     "source_id": c.get("source_id", c.get("pmid", "")),
                     "claim": c.get("claim", c.get("text", "")),
