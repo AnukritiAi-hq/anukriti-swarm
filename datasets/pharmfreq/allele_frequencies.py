@@ -343,6 +343,22 @@ DPYD_FREQUENCIES: list[AlleleFrequencyRecord] = [
     AlleleFrequencyRecord("DPYD", "HapB3", "EUR", 0.022, 64603, "gnomAD", "v4.0", "decreased_function"),
     AlleleFrequencyRecord("DPYD", "HapB3", "EAS", 0.001, 9197, "gnomAD", "v4.0", "decreased_function"),
     AlleleFrequencyRecord("DPYD", "HapB3", "AMR", 0.010, 7647, "gnomAD", "v4.0", "decreased_function"),
+
+    # SAS-relevant variants — CPIC assigns normal function (EUR data) but
+    # South Indian clinical evidence shows significant toxicity risk.
+    # *9A (rs1801265): 27% in South Indian oncology cohorts (Hariprakash 2018)
+    AlleleFrequencyRecord("DPYD", "*9A", "SAS", 0.270, 3471, "literature", "Hariprakash2018", "normal_function_cpic_sas_discordant"),
+    AlleleFrequencyRecord("DPYD", "*9A", "AFR", 0.050, 20744, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "EUR", 0.090, 64603, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "EAS", 0.040, 9197, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "AMR", 0.070, 7647, "gnomAD", "v4.0", "normal_function"),
+
+    # M166V (rs2297595): enriched in SAS; potential decreased function
+    AlleleFrequencyRecord("DPYD", "M166V", "SAS", 0.120, 3471, "literature", "Hariprakash2018", "normal_function_cpic_sas_discordant"),
+    AlleleFrequencyRecord("DPYD", "M166V", "AFR", 0.030, 20744, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "EUR", 0.070, 64603, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "EAS", 0.020, 9197, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "AMR", 0.050, 7647, "gnomAD", "v4.0", "normal_function"),
 ]
 
 # --- TPMT Allele Frequencies ---

@@ -133,6 +133,7 @@ class SwarmRuntime:
             retrieval_bundle = self._stage_retrieval(ctx)
             paths = self._stage_graph_reasoning(ctx)
             self._stage_sufficiency(ctx, retrieval_bundle, paths)
+            self._apply_population_aware_overrides(ctx)
             self._stage_synthesis(ctx)
         except Exception as exc:  # pragma: no cover — defensive
             ctx.record_error(f"fatal: {exc!r}")
@@ -405,6 +406,54 @@ class SwarmRuntime:
             payload={
                 "record_count": len(provenance_records),
                 "records": [p.to_dict() for p in provenance_records],
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Population-aware overrides (post-sufficiency, pre-synthesis)
+    # ------------------------------------------------------------------
+
+    # SAS-specific DPYD variants that CPIC classifies as Normal function
+    # based on European data, but South Asian clinical evidence shows
+    # toxicity risk. When detected in a SAS patient, override the
+    # checkpoint to block synthesis with a named refusal.
+    _SAS_DPYD_REFUSAL_ALLELES: tuple[str, ...] = ("*9A", "M166V")
+
+    def _apply_population_aware_overrides(self, ctx: "UnifiedExecutionContext") -> None:
+        """Post-sufficiency hook: block synthesis for SAS patients carrying
+        DPYD variants with discordant European vs South Asian evidence."""
+        if ctx.gene != "DPYD" or ctx.population.value != "SAS":
+            return
+
+        # Check if genotype contains any SAS-refusal allele
+        alleles = [a.strip() for a in ctx.genotype.split("/")]
+        hit = [a for a in alleles if a in self._SAS_DPYD_REFUSAL_ALLELES]
+        if not hit:
+            return
+
+        # Override the checkpoint — whether it passed or was already blocked
+        # for a generic reason (R3 etc). Our refusal is more informative.
+        checkpoint = (ctx.evidence_state or {}).get("checkpoint") or {}
+
+        refusal_reason = (
+            f"U4: DPYD {'/'.join(hit)} assigned Normal function by CPIC "
+            f"(European data). South Asian evidence (27% carrier frequency "
+            f"for *9A in South Indian oncology cohorts) shows clinically "
+            f"significant toxicity risk not captured by the European 4-variant "
+            f"panel. Population-aware refusal applied — recommend DPD "
+            f"phenotyping or expanded panel before standard-dose fluoropyrimidine."
+        )
+        checkpoint["allows_synthesis"] = False
+        checkpoint["blocking_reason"] = refusal_reason
+        ctx.evidence_state["checkpoint"] = checkpoint
+
+        self._emit(
+            RuntimeEventKind.SAFE_ABSTENTION,
+            ctx,
+            payload={
+                "rule": "U4_SAS_DPYD_OVERRIDE",
+                "alleles": hit,
+                "blocking_reason": refusal_reason,
             },
         )
 
