@@ -97,6 +97,12 @@ class SwarmRuntime:
     # run LLMNarrator after the deterministic Stage 5.
     synthesis_mode: str | None = None
 
+    # Optional injected narrator. When None and synthesis_mode is
+    # "llm_grounded", a no-client LLMNarrator is constructed lazily
+    # (produces an empty narrative — useful for offline/byte-identical
+    # tests). Tests inject a mock narrator here.
+    llm_narrator: Any = None
+
     # Lazily-built shared components. Build once per SwarmRuntime;
     # reuse across ``run()`` invocations. Exposed on the instance so
     # tests can introspect.
@@ -501,50 +507,138 @@ class SwarmRuntime:
         ctx: "UnifiedExecutionContext",
         citations: list[Any],
     ) -> None:
-        """Run LLMNarrator to produce a citation-validated grounded narrative."""
+        """Run LLMNarrator to produce a citation-validated grounded narrative.
+
+        Plan T9 fallback contract
+        --------------------------
+        The deterministic narrative (``ctx.narrative_output["patient"]`` /
+        ``["researcher"]``) is *always* the authoritative output. The grounded
+        LLM narrative is an additive, opt-in adornment that only survives when
+        it passes the ``CitationValidator``.
+
+        * ``ALL_CITED`` (or ``EMPTY_RESPONSE`` from the no-client mock) →
+          attach the grounded narrative as produced.
+        * ``MISSING_CITATIONS`` (C1) / ``FABRICATED_CITATION`` (C2) /
+          ``MALFORMED`` (C4) → **do not** surface the unvalidated LLM text.
+          Fall back to the deterministic narrative and record the named
+          C-rule refusal in the grounded trace so the audit chain explains
+          why the LLM text was dropped.
+
+        A ``GenerativeBoundaryViolation`` (raised by the narrator when it
+        detects fabricated citations) is caught here and converted into the
+        same C2 named-refusal fallback — the boundary still fires, but the
+        run does not crash.
+        """
+        from ai.narrative.llm_narrator import LLMNarrator
+        from core.orchestrator.boundary import GenerativeBoundaryViolation
+        from core.runtime.citation_validator import CitationVerdict
+
+        # Map citation verdicts to the named C-rule that explains a fallback.
+        fallback_rules = {
+            CitationVerdict.MISSING_CITATIONS: "C1",
+            CitationVerdict.FABRICATED_CITATION: "C2",
+            CitationVerdict.MALFORMED: "C4",
+        }
+
+        evidence_records = [
+            {"source": c, "source_id": c, "claim": c}
+            if isinstance(c, str)
+            else {
+                "source": c.get("source", "unknown"),
+                "source_id": c.get("source_id", c.get("pmid", "")),
+                "claim": c.get("claim", c.get("text", "")),
+            }
+            for c in citations
+        ]
+
+        narrator = self.llm_narrator or LLMNarrator(client=None, audience="clinician")
+
         try:
-            from ai.narrative.llm_narrator import LLMNarrator
-
-            evidence_records = [
-                {"source": c, "source_id": c, "claim": c}
-                if isinstance(c, str)
-                else {
-                    "source": c.get("source", "unknown"),
-                    "source_id": c.get("source_id", c.get("pmid", "")),
-                    "claim": c.get("claim", c.get("text", "")),
-                }
-                for c in citations
-            ]
-
-            narrator = LLMNarrator(client=None, audience="clinician")
             result = narrator.narrate(
                 gene=ctx.gene,
                 drug=ctx.drug,
                 population=ctx.population.value,
-                phenotype=ctx.narrative_output.get("researcher", "")[:50] if ctx.narrative_output else "",
+                phenotype=ctx.narrative_output.get("researcher", "")[:50]
+                if ctx.narrative_output
+                else "",
                 evidence_records=evidence_records,
             )
-
+        except GenerativeBoundaryViolation as exc:
+            # Fabricated-claim boundary fired inside the narrator before it
+            # could return. Keep the deterministic narrative; record the C2
+            # refusal in the grounded trace with the same shape as the
+            # validation-failure branch below.
+            ctx.record_error(f"llm_grounded_synthesis: boundary: {exc!r}")
             ctx.narrative_output["grounded"] = {
-                "text": result.text,
-                "citations": list(result.citations),
+                "text": "",
+                "citations": [],
                 "validation": {
-                    "verdict": result.validation.verdict.value,
-                    "total_sentences": result.validation.total_sentences,
-                    "cited_sentences": result.validation.cited_sentences,
-                    "uncited_claims": list(result.validation.uncited_claims),
+                    "verdict": CitationVerdict.FABRICATED_CITATION.value,
+                    "boundary_violation": str(exc),
                 },
-                "chemistry_context": result.chemistry_context,
-                "model": result.model,
-                "latency_ms": result.latency_ms,
+                "used_fallback": True,
+                "fallback_rule": "C2",
+                "fallback_to": "deterministic",
+                "unvalidated_text": getattr(exc, "reason", "") or str(exc),
+                "model": "blocked",
             }
             self._emit(
-                RuntimeEventKind.SYNTHESIS_EMITTED,
+                RuntimeEventKind.SAFE_ABSTENTION,
                 ctx,
-                payload={"grounded": True, "model": result.model},
+                payload={"grounded": True, "rule": "C2", "reason": "fabricated_citation"},
             )
-        except Exception as exc:
+            return
+        except Exception as exc:  # pragma: no cover — defensive
             ctx.record_error(f"llm_grounded_synthesis: {exc!r}")
+            return
+
+        verdict = result.validation.verdict
+        fallback_rule = fallback_rules.get(verdict)
+
+        grounded: dict[str, Any] = {
+            "text": result.text,
+            "citations": list(result.citations),
+            "validation": {
+                "verdict": verdict.value,
+                "total_sentences": result.validation.total_sentences,
+                "cited_sentences": result.validation.cited_sentences,
+                "uncited_claims": list(result.validation.uncited_claims),
+                "fabricated_citations": list(result.validation.fabricated_citations),
+                "rules_triggered": [r.value for r in result.validation.rules_triggered],
+            },
+            "chemistry_context": result.chemistry_context,
+            "model": result.model,
+            "latency_ms": result.latency_ms,
+            "used_fallback": fallback_rule is not None,
+        }
+
+        if fallback_rule is not None:
+            # Validation failed: drop the unvalidated LLM text from the
+            # user-facing slot, keep it in the trace for audit, and name
+            # the rule that triggered the fallback.
+            grounded["fallback_rule"] = fallback_rule
+            grounded["fallback_to"] = "deterministic"
+            grounded["unvalidated_text"] = result.text
+            grounded["text"] = ""
+            ctx.narrative_output["grounded"] = grounded
+            self._emit(
+                RuntimeEventKind.SAFE_ABSTENTION,
+                ctx,
+                payload={
+                    "grounded": True,
+                    "rule": fallback_rule,
+                    "reason": verdict.value,
+                },
+            )
+            return
+
+        # Clean (ALL_CITED) or empty no-client mock — attach as produced.
+        ctx.narrative_output["grounded"] = grounded
+        self._emit(
+            RuntimeEventKind.SYNTHESIS_EMITTED,
+            ctx,
+            payload={"grounded": True, "model": result.model},
+        )
 
 
 # ---------------------------------------------------------------------------
