@@ -32,4 +32,4 @@ mypy==1.10.0
 # Pin the patch version exactly — the library is the biomedical truth
 # layer and new versions may contain CPIC table updates that require
 # regression review in Swarm before adoption. Bump this pin deliberately.
-anukriti-pgx-core==0.5.0
+anukriti-pgx-core==0.6.0
