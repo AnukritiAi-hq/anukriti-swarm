@@ -344,21 +344,37 @@ DPYD_FREQUENCIES: list[AlleleFrequencyRecord] = [
     AlleleFrequencyRecord("DPYD", "HapB3", "EAS", 0.001, 9197, "gnomAD", "v4.0", "decreased_function"),
     AlleleFrequencyRecord("DPYD", "HapB3", "AMR", 0.010, 7647, "gnomAD", "v4.0", "decreased_function"),
 
-    # SAS-relevant variants — CPIC assigns normal function (EUR data) but
-    # South Indian clinical evidence shows significant toxicity risk.
-    # *9A (rs1801265): 27% in South Indian oncology cohorts (Hariprakash 2018)
-    AlleleFrequencyRecord("DPYD", "*9A", "SAS", 0.270, 3471, "literature", "Hariprakash2018", "normal_function_cpic_sas_discordant"),
-    AlleleFrequencyRecord("DPYD", "*9A", "AFR", 0.050, 20744, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "*9A", "EUR", 0.090, 64603, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "*9A", "EAS", 0.040, 9197, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "*9A", "AMR", 0.070, 7647, "gnomAD", "v4.0", "normal_function"),
+    # --- *9A (rs1801265, c.85T>C) and M166V (rs2297595, c.496A>G) ---
+    # Both assigned **Normal function** by CPIC (verified against CPIC's
+    # live allele API, 2026-07-28). Retained here because the swarm's
+    # population-aware layer flags them as a contested-evidence research
+    # question (rule P1_SAS_DPYD_CONTESTED), not because either is an
+    # established South Asian risk allele.
+    #
+    # Frequencies below are REAL gnomAD v2.1.1 exome numbers, queried live
+    # on 2026-07-28 and replacing hand-written approximations that were
+    # wrong in both magnitude and direction. Audit trail:
+    # anukriti_docs/DPYD_SAS_OVERRIDE_AUDIT_2026-07-28.md
+    #
+    # NOTE on *9A: gnomAD represents rs1801265 as 1-98348885-G-A, where the
+    # *9A variant allele is the REF letter (G) — DPYD is a minus-strand
+    # gene. The frequencies below are for the *variant* allele
+    # (1 - AF(A)), not gnomAD's raw ALT AF.
+    #
+    # Neither allele is South-Asian-enriched in real data:
+    #   *9A   SAS 0.2550 vs EUR 0.2226 -> ratio 1.15 (AFR 0.4131 is the max)
+    #   M166V SAS 0.0906 vs EUR 0.1004 -> ratio 0.90 (SAS *below* EUR)
+    AlleleFrequencyRecord("DPYD", "*9A", "SAS", 0.2550, 30608, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "AFR", 0.4131, 16238, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "EUR", 0.2226, 113316, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "EAS", 0.0720, 18348, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "*9A", "AMR", 0.2113, 34524, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
 
-    # M166V (rs2297595): enriched in SAS; potential decreased function
-    AlleleFrequencyRecord("DPYD", "M166V", "SAS", 0.120, 3471, "literature", "Hariprakash2018", "normal_function_cpic_sas_discordant"),
-    AlleleFrequencyRecord("DPYD", "M166V", "AFR", 0.030, 20744, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "M166V", "EUR", 0.070, 64603, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "M166V", "EAS", 0.020, 9197, "gnomAD", "v4.0", "normal_function"),
-    AlleleFrequencyRecord("DPYD", "M166V", "AMR", 0.050, 7647, "gnomAD", "v4.0", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "SAS", 0.0906, 30584, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "AFR", 0.0334, 16240, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "EUR", 0.1004, 113440, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "EAS", 0.0158, 18394, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
+    AlleleFrequencyRecord("DPYD", "M166V", "AMR", 0.0359, 34556, "gnomAD", "v2.1.1_exomes_live_2026-07-28", "normal_function"),
 ]
 
 # --- TPMT Allele Frequencies ---

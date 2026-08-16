@@ -419,47 +419,94 @@ class SwarmRuntime:
     # Population-aware overrides (post-sufficiency, pre-synthesis)
     # ------------------------------------------------------------------
 
-    # SAS-specific DPYD variants that CPIC classifies as Normal function
-    # based on European data, but South Asian clinical evidence shows
-    # toxicity risk. When detected in a SAS patient, override the
-    # checkpoint to block synthesis with a named refusal.
-    _SAS_DPYD_REFUSAL_ALLELES: tuple[str, ...] = ("*9A", "M166V")
+    # DPYD variants outside CPIC's actionable set whose South Asian
+    # toxicity evidence is *contested in the primary literature*. These are
+    # flagged as a named uncertainty, NOT refused.
+    #
+    # Audited 2026-07-28 against three primary sources and two live APIs
+    # (see anukriti_docs/DPYD_SAS_OVERRIDE_AUDIT_2026-07-28.md). What the
+    # audit established, and why this is a flag rather than a block:
+    #
+    #   * CPIC's live API confirms both alleles are Normal function
+    #     (c.85T>C = *9A; c.496A>G = M166V). That half of the original
+    #     premise held up.
+    #   * The "enriched in South Asians" half did not. Real gnomAD v2.1.1
+    #     exome frequencies for the variant allele: *9A SAS 0.2550 vs
+    #     EUR(NFE) 0.2226 (ratio 1.15 — not enrichment; AFR 0.4131 is the
+    #     population maximum), and M166V SAS 0.0906 vs EUR(NFE) 0.1004
+    #     (ratio 0.90 — SAS is *lower* than EUR).
+    #   * The clinical evidence is genuinely contested: Hariprakash 2018
+    #     found M166V associated with hand-foot syndrome (OR 5.22,
+    #     p=0.011, n=110) but its *9A assay failed outright; Naushad 2021
+    #     pooled Indian data found no association for either (*9A OR 1.03,
+    #     p=0.95; M166V OR 1.54, p=0.32); Atasilp 2025 found *9A
+    #     associated with grade 3-4 neutropenia on n=2 homozygotes, with
+    #     no association surviving its own multivariate analysis.
+    #
+    # Three papers, three incompatible answers, and no population-frequency
+    # argument to fall back on. That is a real open question, so the runtime
+    # names it as unresolved rather than asserting a refusal the literature
+    # does not support. Blocking synthesis on contested evidence would be
+    # the same class of error as CPIC asserting a EUR-derived call
+    # everywhere — a confident answer where the evidence supports none.
+    _SAS_DPYD_CONTESTED_ALLELES: tuple[str, ...] = ("*9A", "M166V")
 
     def _apply_population_aware_overrides(self, ctx: "UnifiedExecutionContext") -> None:
-        """Post-sufficiency hook: block synthesis for SAS patients carrying
-        DPYD variants with discordant European vs South Asian evidence."""
+        """Post-sufficiency hook: attach a named uncertainty flag for SAS
+        patients carrying DPYD alleles whose South Asian toxicity evidence is
+        contested in the primary literature.
+
+        Deliberately does **not** mutate ``allows_synthesis``. The
+        deterministic sufficiency verdict from Stage 4 stands; this hook only
+        annotates it. See ``_SAS_DPYD_CONTESTED_ALLELES`` for the audit trail.
+        """
         if ctx.gene != "DPYD" or ctx.population.value != "SAS":
             return
 
-        # Check if genotype contains any SAS-refusal allele
         alleles = [a.strip() for a in ctx.genotype.split("/")]
-        hit = [a for a in alleles if a in self._SAS_DPYD_REFUSAL_ALLELES]
+        hit = [a for a in alleles if a in self._SAS_DPYD_CONTESTED_ALLELES]
         if not hit:
             return
 
-        # Override the checkpoint — whether it passed or was already blocked
-        # for a generic reason (R3 etc). Our refusal is more informative.
-        checkpoint = (ctx.evidence_state or {}).get("checkpoint") or {}
-
-        refusal_reason = (
-            f"U4: DPYD {'/'.join(hit)} assigned Normal function by CPIC "
-            f"(European data). South Asian evidence (27% carrier frequency "
-            f"for *9A in South Indian oncology cohorts) shows clinically "
-            f"significant toxicity risk not captured by the European 4-variant "
-            f"panel. Population-aware refusal applied — recommend DPD "
-            f"phenotyping or expanded panel before standard-dose fluoropyrimidine."
+        flag_reason = (
+            f"P1_SAS_DPYD_CONTESTED: DPYD {'/'.join(hit)} is assigned Normal "
+            f"function by CPIC (verified against CPIC's live allele API, "
+            f"2026-07-28). South Asian toxicity evidence for this allele is "
+            f"contested, not established: Hariprakash 2018 associates M166V "
+            f"with hand-foot syndrome (OR 5.22, p=0.011, n=110) but its *9A "
+            f"assay failed; Naushad 2021 pooled Indian data finds no "
+            f"association for either allele (*9A OR 1.03 p=0.95; M166V OR "
+            f"1.54 p=0.32); Atasilp 2025 associates *9A with grade 3-4 "
+            f"neutropenia on n=2 homozygotes, not surviving its own "
+            f"multivariate analysis. Neither allele is enriched in South "
+            f"Asians in real gnomAD v2.1.1 data (*9A SAS 0.2550 vs EUR "
+            f"0.2226; M166V SAS 0.0906 vs EUR 0.1004). Deterministic "
+            f"phenotype and CPIC-actionable variant handling are unaffected "
+            f"— this flags an unresolved research question, and is not "
+            f"grounds to withhold the standard CPIC answer."
         )
-        checkpoint["allows_synthesis"] = False
-        checkpoint["blocking_reason"] = refusal_reason
+
+        checkpoint = (ctx.evidence_state or {}).get("checkpoint") or {}
+        checkpoint["population_uncertainty_flags"] = [
+            *checkpoint.get("population_uncertainty_flags", []),
+            {
+                "rule": "P1_SAS_DPYD_CONTESTED",
+                "gene": "DPYD",
+                "population": "SAS",
+                "alleles": hit,
+                "reason": flag_reason,
+            },
+        ]
         ctx.evidence_state["checkpoint"] = checkpoint
 
         self._emit(
-            RuntimeEventKind.SAFE_ABSTENTION,
+            RuntimeEventKind.UNCERTAINTY_TRANSITION,
             ctx,
             payload={
-                "rule": "U4_SAS_DPYD_OVERRIDE",
+                "rule": "P1_SAS_DPYD_CONTESTED",
                 "alleles": hit,
-                "blocking_reason": refusal_reason,
+                "flag_reason": flag_reason,
+                "allows_synthesis_changed": False,
             },
         )
 
