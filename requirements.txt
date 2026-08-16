@@ -32,7 +32,8 @@ mypy==1.10.0
 # Pin the patch version exactly — the library is the biomedical truth
 # layer and new versions may contain CPIC table updates that require
 # regression review in Swarm before adoption. Bump this pin deliberately.
-# Pinned exactly per AGENTS.md. 0.8.1 is reviewed, approved and tagged but not
-# yet on PyPI (publish awaits an admin approval). Held at 0.7.3 so fresh
-# installs resolve; bump to 0.8.1 on publication — the suite already passes.
-anukriti-pgx-core==0.7.3
+# Pinned exactly per AGENTS.md. 0.8.1 reviewed and approved 2026-08-17 (see
+# anukriti-pgx-core docs/REGRESSION_REVIEW_0.7.3_to_0.8.1.md): 1901 genotype
+# cases, every difference confined to TPMT, DPYD bit-identical. Carries the
+# TPMT genotype-inversion safety fix.
+anukriti-pgx-core==0.8.1
