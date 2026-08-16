@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from integrations.mcp.provenance import ProvenanceRecord
 from knowledge_graph import (
@@ -424,32 +424,119 @@ class SwarmRuntime:
     # flagged as a named uncertainty, NOT refused.
     #
     # Audited 2026-07-28 against three primary sources and two live APIs
-    # (see anukriti_docs/DPYD_SAS_OVERRIDE_AUDIT_2026-07-28.md). What the
-    # audit established, and why this is a flag rather than a block:
+    # (see anukriti_docs/DPYD_SAS_OVERRIDE_AUDIT_2026-07-28.md), and
+    # re-audited 2026-08-16 across four further research passes (see
+    # anukriti_docs/ONCOLOGY_SOLUTION_AND_ARCHITECTURE_2026-08-16.md).
+    # What the audits established, and why this is a flag rather than a block:
     #
-    #   * CPIC's live API confirms both alleles are Normal function
-    #     (c.85T>C = *9A; c.496A>G = M166V). That half of the original
-    #     premise held up.
+    #   * CPIC's live API confirms all three alleles are Normal function
+    #     (c.85T>C = *9A; c.496A>G = M166V; c.2194G>A = *6). That half of
+    #     the original premise held up.
     #   * The "enriched in South Asians" half did not. Real gnomAD v2.1.1
     #     exome frequencies for the variant allele: *9A SAS 0.2550 vs
     #     EUR(NFE) 0.2226 (ratio 1.15 — not enrichment; AFR 0.4131 is the
     #     population maximum), and M166V SAS 0.0906 vs EUR(NFE) 0.1004
     #     (ratio 0.90 — SAS is *lower* than EUR).
-    #   * The clinical evidence is genuinely contested: Hariprakash 2018
-    #     found M166V associated with hand-foot syndrome (OR 5.22,
-    #     p=0.011, n=110) but its *9A assay failed outright; Naushad 2021
-    #     pooled Indian data found no association for either (*9A OR 1.03,
-    #     p=0.95; M166V OR 1.54, p=0.32); Atasilp 2025 found *9A
-    #     associated with grade 3-4 neutropenia on n=2 homozygotes, with
-    #     no association surviving its own multivariate analysis.
+    #   * What IS true, and is the better framing, is a **coverage**
+    #     mismatch rather than an enrichment one. In CPIC's own
+    #     Central/South Asian reference data the four CPIC-actionable
+    #     variants sum to 0.02538 allele frequency — of which *13 is
+    #     exactly 0.00000 — while these three Normal-function alleles plus
+    #     *5 sum to 0.52921, roughly 20.9x as much. Under Hardy-Weinberg
+    #     that predicts ~95.0% of SAS patients reported Normal Metabolizer
+    #     and ~77.8% carrying at least one Normal-function allele; D-TORCH
+    #     (Baskarane 2026, n=76, AIIMS) observed 71.1%. So the gap is
+    #     derivable from the guideline's own tables, and Indian data
+    #     confirms it.
+    #   * The clinical evidence for these specific alleles is genuinely
+    #     contested, and the 2026-08-16 re-audit corrected how two of the
+    #     three original citations were characterised:
+    #       - Hariprakash 2018 (PMID 29239269) is a population-genomics /
+    #         in-silico study of ~3000 South Asians, validated in 110
+    #         Indian patients for *frequencies*. It is NOT a clinical
+    #         toxicity study, which the 2026-07-28 text implied.
+    #       - Naushad 2021 (PMID 33105068) is a 2000-subject array plus
+    #         in-silico prediction study. Also not a clinical toxicity
+    #         study.
+    #       - Atasilp 2025 (PMID 39652193) IS clinical but tiny: n=75 Thai
+    #         patients, the *9A signal resting on 2 homozygotes and not
+    #         surviving its own multivariate analysis.
+    #     The genuinely informative Indian evidence is thinner than a
+    #     count of papers suggests, because two of the five published
+    #     Indian DPYD studies tested only patients who had ALREADY
+    #     developed grade 3+ toxicity (Patil 2016 PMID 28032083, 12 of 34;
+    #     Sahu 2016 PMID 27284470, 28 of 506), which inflates any apparent
+    #     genotype-toxicity association. Genotyped WITHOUT toxicity
+    #     selection: ~451 patients across two centres — Pavithran 2021
+    #     (ASCO abstract, n=375, Amrita Kochi) and D-TORCH (n=76, AIIMS).
+    #     Those two disagree, and the methodologically stronger one
+    #     (prospective, WES, unselected) found no association at all
+    #     (OR 0.71, 95% CI 0.26-1.98, p=0.612).
+    #   * For *6 specifically the disagreement runs the other way and is
+    #     larger: >3,000 patients of European clinical evidence associate
+    #     it with severe toxicity (Del Re 2019 PMID 30723313 n=1254 OR 1.7
+    #     p<0.001; PETACC-8 n=1545; TOSCA; Li 2014 n=946) against CPIC's
+    #     in-vitro Normal-function call (PMID 23328581, strength Moderate).
+    #     pgx-core 0.7.2 restored *6 to CPIC's word precisely so that this
+    #     disagreement is recorded here, in a layer above the table, rather
+    #     than written silently into pinned CPIC truth.
     #
-    # Three papers, three incompatible answers, and no population-frequency
+    # Several papers, incompatible answers, and no population-frequency
     # argument to fall back on. That is a real open question, so the runtime
     # names it as unresolved rather than asserting a refusal the literature
     # does not support. Blocking synthesis on contested evidence would be
     # the same class of error as CPIC asserting a EUR-derived call
     # everywhere — a confident answer where the evidence supports none.
-    _SAS_DPYD_CONTESTED_ALLELES: tuple[str, ...] = ("*9A", "M166V")
+    _SAS_DPYD_CONTESTED_ALLELES: ClassVar[tuple[str, ...]] = ("*9A", "M166V", "*6")
+
+    # Per-allele evidence summaries. Kept separate from the tuple above so the
+    # emitted reason names *this patient's* alleles rather than reciting every
+    # dispute — and because the direction of disagreement differs by allele:
+    # for *9A and M166V the contested claim is that they are harmful, while for
+    # *6 the weight of clinical evidence points against CPIC's Normal call.
+    _SAS_DPYD_ALLELE_EVIDENCE: ClassVar[dict[str, str]] = {
+        "*9A": (
+            "*9A (c.85T>C): CPIC Normal function, activity 1.0, evidence "
+            "strength STRONG, basis IN VIVO (dihydrouracil) citing PMID "
+            "18452418 — He/Zhang 2008, n=142 CHINESE cancer patients, plasma "
+            "DPD activity, which found NO correlation with *9A. It is the most "
+            "common DPYD allele in this population (CPIC Central/South Asian "
+            "frequency 0.25526) and its function call rests on East Asian "
+            "in-vivo data. Indian pharmacokinetic evidence (Varma 2020, PMID "
+            "32966231, n=145 JIPMER) reports higher 5-FU levels at 3h in GG "
+            "homozygotes; the largest Asian toxicity study (Kanai 2022, PMID "
+            "36524458, n=1364 Japanese) found no association and a trend "
+            "toward protection (neutropenia OR 0.53, p=0.054)."
+        ),
+        "M166V": (
+            "M166V (c.496A>G): CPIC Normal function, activity 1.0, evidence "
+            "strength Moderate, basis IN VITRO citing PMID 24648345 (Offer "
+            "2014, HEK293T recombinant). Central/South Asian frequency "
+            "0.08517. Contested in Indian data in both directions: Pavithran "
+            "2021 (ASCO abstract, n=375, Amrita Kochi) reports it in 32 of 47 "
+            "variant-positive patients, with 35 of 47 developing grade II-III "
+            "toxicity DESPITE pre-emptive activity-score-guided dose reduction "
+            "— but that study exists only as a conference abstract and its "
+            "headline statistic is ambiguous. D-TORCH (Baskarane 2026, n=76, "
+            "AIIMS) found it in 7 of 76 patients with no toxicity signal, in "
+            "the same national population with a stronger method (prospective, "
+            "WES, unselected for toxicity)."
+        ),
+        "*6": (
+            "*6 (c.2194G>A): CPIC Normal function, activity 1.0, evidence "
+            "strength Moderate, basis IN VITRO citing PMID 23328581 (Offer "
+            "2013, HEK293T recombinant). Central/South Asian frequency "
+            "0.09506. Here the disagreement runs AGAINST CPIC and is large: "
+            ">3,000 patients of clinical evidence associate *6 with severe "
+            "fluoropyrimidine toxicity (Del Re 2019 PMID 30723313 n=1254 OR "
+            "1.7 p<0.001; PETACC-8 n=1545; TOSCA Ruzzo 2017; Li 2014 "
+            "meta-analysis n=946). CPIC has not revised the call. D-TORCH "
+            "(n=76, AIIMS) found rs1801160 in 13 of 76 Indian patients with "
+            "no association overall (OR 0.71, p=0.612). pgx-core 0.7.2 "
+            "restored *6 to CPIC's word so that this disagreement is recorded "
+            "in a layer above the pinned table rather than written into it."
+        ),
+    }
 
     def _apply_population_aware_overrides(self, ctx: "UnifiedExecutionContext") -> None:
         """Post-sufficiency hook: attach a named uncertainty flag for SAS
@@ -468,22 +555,36 @@ class SwarmRuntime:
         if not hit:
             return
 
+        # Deduplicate, preserving order, so a homozygote does not have its
+        # evidence recited twice.
+        seen: list[str] = []
+        for allele in hit:
+            if allele not in seen:
+                seen.append(allele)
+
+        per_allele = " ".join(self._SAS_DPYD_ALLELE_EVIDENCE[a] for a in seen)
+
         flag_reason = (
-            f"P1_SAS_DPYD_CONTESTED: DPYD {'/'.join(hit)} is assigned Normal "
+            f"P1_SAS_DPYD_CONTESTED: DPYD {'/'.join(seen)} is assigned Normal "
             f"function by CPIC (verified against CPIC's live allele API, "
-            f"2026-07-28). South Asian toxicity evidence for this allele is "
-            f"contested, not established: Hariprakash 2018 associates M166V "
-            f"with hand-foot syndrome (OR 5.22, p=0.011, n=110) but its *9A "
-            f"assay failed; Naushad 2021 pooled Indian data finds no "
-            f"association for either allele (*9A OR 1.03 p=0.95; M166V OR "
-            f"1.54 p=0.32); Atasilp 2025 associates *9A with grade 3-4 "
-            f"neutropenia on n=2 homozygotes, not surviving its own "
-            f"multivariate analysis. Neither allele is enriched in South "
-            f"Asians in real gnomAD v2.1.1 data (*9A SAS 0.2550 vs EUR "
-            f"0.2226; M166V SAS 0.0906 vs EUR 0.1004). Deterministic "
-            f"phenotype and CPIC-actionable variant handling are unaffected "
-            f"— this flags an unresolved research question, and is not "
-            f"grounds to withhold the standard CPIC answer."
+            f"re-verified 2026-08-16). {per_allele} "
+            f"COVERAGE CONTEXT: in CPIC's Central/South Asian reference data "
+            f"the four CPIC-actionable variants sum to 0.02538 allele "
+            f"frequency — *13 is exactly 0.00000 in this population — while "
+            f"the Normal-function alleles common here sum to 0.52921, about "
+            f"20.9x as much. Under Hardy-Weinberg that predicts ~95.0% of such "
+            f"patients reported Normal Metabolizer and ~77.8% carrying at "
+            f"least one Normal-function allele; D-TORCH observed 71.1% "
+            f"(54/76). RESIDUAL RISK: CPIC itself states that patients without "
+            f"a decreased/no-function variant 'may still experience severe "
+            f"toxicity', and that such a test 'does not fully rule out DPD "
+            f"defects' (PMID 29152729); 22.7% (231/1018) of patients without "
+            f"an actionable variant had grade >=3 toxicity on systemic "
+            f"fluoropyrimidine chemotherapy (Henricks 2018, PMID 30348537). "
+            f"Deterministic phenotype and CPIC-actionable variant handling are "
+            f"unaffected — this flags an unresolved research question. It is "
+            f"not grounds to withhold the standard CPIC answer, and not "
+            f"evidence that this patient is at elevated risk."
         )
 
         checkpoint = (ctx.evidence_state or {}).get("checkpoint") or {}
@@ -493,7 +594,7 @@ class SwarmRuntime:
                 "rule": "P1_SAS_DPYD_CONTESTED",
                 "gene": "DPYD",
                 "population": "SAS",
-                "alleles": hit,
+                "alleles": seen,
                 "reason": flag_reason,
             },
         ]
@@ -504,7 +605,7 @@ class SwarmRuntime:
             ctx,
             payload={
                 "rule": "P1_SAS_DPYD_CONTESTED",
-                "alleles": hit,
+                "alleles": seen,
                 "flag_reason": flag_reason,
                 "allows_synthesis_changed": False,
             },

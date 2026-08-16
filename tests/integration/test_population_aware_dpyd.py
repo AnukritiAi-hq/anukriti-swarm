@@ -144,18 +144,96 @@ class TestContestedAlleleFlag:
         assert not _flags(ctx)[0]["rule"].startswith("U4")
 
     def test_reason_cites_the_contested_evidence_honestly(self, runtime):
-        """The refusal text used to assert a toxicity risk the papers dispute."""
+        """The reason must characterise each study as what it actually is.
+
+        The 2026-07-28 text named Hariprakash 2018 and Naushad 2021 as though
+        they were clinical toxicity studies. The 2026-08-16 re-audit established
+        that Hariprakash (PMID 29239269) is population-genomics / in-silico on
+        ~3000 South Asians and Naushad (PMID 33105068) is a 2000-subject array
+        plus in-silico prediction study. Neither is a clinical toxicity study,
+        so neither belongs in a per-allele clinical evidence summary. They are
+        retained in the module docstring as part of the audit trail.
+
+        What replaces them is evidence that IS clinical, with its own design
+        stated: D-TORCH (prospective, WES, unselected) and Pavithran (an ASCO
+        abstract), which disagree with each other.
+        """
         ctx = _ctx(SuperPopulation.SAS, "*1/M166V")
         runtime.run(ctx)
         reason = _flags(ctx)[0]["reason"]
 
-        # names all three primary sources rather than one
-        for source in ("Hariprakash 2018", "Naushad 2021", "Atasilp 2025"):
-            assert source in reason
-        # states the real, non-enriched frequency direction
-        assert "0.0906" in reason and "0.1004" in reason
-        # does not repeat the withdrawn "27% carrier frequency" claim
+        # The clinical studies that actually bear on M166V, both directions.
+        assert "Pavithran 2021" in reason
+        assert "D-TORCH" in reason
+        # Their designs are stated, not just their conclusions.
+        assert "conference abstract" in reason
+        assert "unselected for toxicity" in reason
+        # CPIC's own position and its basis are named.
+        assert "Normal function" in reason
+        assert "IN VITRO" in reason
+        assert "24648345" in reason  # Offer 2014, the CPIC citation
+        # Does not repeat the withdrawn "27% carrier frequency" claim.
         assert "27%" not in reason
+
+    def test_reason_states_the_coverage_mismatch_from_cpic_data(self, runtime):
+        """The load-bearing quantitative claim, derived from CPIC's own tables."""
+        ctx = _ctx(SuperPopulation.SAS, "*1/*9A")
+        runtime.run(ctx)
+        reason = _flags(ctx)[0]["reason"]
+
+        assert "0.02538" in reason      # actionable panel sum, CSA
+        assert "0.52921" in reason      # Normal-function alleles sum, CSA
+        assert "0.00000" in reason      # *13 in CSA
+        assert "71.1%" in reason        # what D-TORCH observed
+
+    def test_reason_carries_the_cpic_residual_risk_caveat(self, runtime):
+        """The safety message must be CPIC's own words, not ours."""
+        ctx = _ctx(SuperPopulation.SAS, "*1/*9A")
+        runtime.run(ctx)
+        reason = _flags(ctx)[0]["reason"]
+
+        assert "does not fully rule out DPD defects" in reason
+        assert "29152729" in reason     # the CPIC guideline
+        assert "22.7%" in reason        # wild-type rate, systemic
+        assert "30348537" in reason     # Henricks 2018
+
+    def test_reason_never_claims_elevated_risk(self, runtime):
+        """A named uncertainty is not a risk finding."""
+        for genotype in ("*1/*9A", "*1/M166V", "*1/*6", "*9A/*9A"):
+            ctx = _ctx(SuperPopulation.SAS, genotype)
+            runtime.run(ctx)
+            reason = _flags(ctx)[0]["reason"]
+            assert "not evidence that this patient is at elevated risk" in reason
+
+    def test_star6_is_flagged_with_the_disagreement_running_against_cpic(
+        self, runtime
+    ):
+        """*6 is the case where clinical evidence points against CPIC.
+
+        pgx-core 0.7.2 restored *6 to CPIC's Normal function after it had been
+        carried as Decreased — defensible on the evidence, but an undeclared
+        deviation from pinned truth. This flag is where that disagreement now
+        lives.
+        """
+        ctx = _ctx(SuperPopulation.SAS, "*1/*6")
+        runtime.run(ctx)
+        flags = _flags(ctx)
+
+        assert flags, "*6 must raise the contested-allele flag"
+        assert "*6" in flags[0]["alleles"]
+        reason = flags[0]["reason"]
+        assert "AGAINST CPIC" in reason
+        assert "Del Re 2019" in reason
+        assert "30723313" in reason
+        assert "pgx-core 0.7.2" in reason
+
+    def test_homozygote_does_not_recite_its_evidence_twice(self, runtime):
+        ctx = _ctx(SuperPopulation.SAS, "*9A/*9A")
+        runtime.run(ctx)
+        flags = _flags(ctx)
+
+        assert flags[0]["alleles"] == ["*9A"], "alleles must be deduplicated"
+        assert flags[0]["reason"].count("18452418") == 1
 
 
 class TestScopeIsNarrow:

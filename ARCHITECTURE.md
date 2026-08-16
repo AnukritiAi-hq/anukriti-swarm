@@ -15,7 +15,7 @@ with a hard runtime boundary:
 
 | Mode | Purpose | Implementation |
 |------|---------|----------------|
-| **Deterministic** | Phenotype calling, CPIC lookup, allele frequency retrieval, evidence sufficiency rules, verification engines | Rule tables, closed-enum contracts, versioned library ([`anukriti-pgx-core==0.2.1`](https://pypi.org/project/anukriti-pgx-core/)) |
+| **Deterministic** | Phenotype calling, CPIC lookup, allele frequency retrieval, evidence sufficiency rules, verification engines | Rule tables, closed-enum contracts, versioned library ([`anukriti-pgx-core==0.7.3`](https://pypi.org/project/anukriti-pgx-core/)) |
 | **Generative** | Narrative synthesis, comparative reasoning, orchestration planning | LLM calls (Gemini or OpenAI), guarded by `GenerativeBoundary` — four forbidden actions (infer_phenotype, override_recommendation, bypass_verification, fabricate_claim) raise at runtime |
 
 The separation is enforced **at the type boundary** — deterministic
@@ -31,7 +31,7 @@ config toggle.
 | Layer | Technology | Why |
 |-------|------------|-----|
 | Language | Python 3.11+ | Type hints, frozen dataclasses, `typing_extensions` support |
-| Deterministic core | [`anukriti-pgx-core`](https://pypi.org/project/anukriti-pgx-core/) pinned to `0.2.1` | Published library, CPIC tables versioned by filename, zero runtime deps |
+| Deterministic core | [`anukriti-pgx-core`](https://pypi.org/project/anukriti-pgx-core/) pinned to `0.7.3` | Published library, CPIC tables versioned by filename, zero runtime deps |
 | Data models | `pydantic==2.7.1` | Frozen records, closed-enum validation, JSON serialization |
 | LLM providers | `google-genai`, `openai==1.30.1`, `anthropic==0.25.8` | Multi-provider with fallback; Gemini is primary |
 | Backend API | `fastapi==0.111.0` + `uvicorn==0.29.0` | WebSocket streaming for live execution events |
@@ -168,7 +168,7 @@ per-event panel updates.
 ## Consumer relationship with `anukriti-pgx-core`
 
 `anukriti-pgx-core` owns the deterministic biomedical truth layer. Swarm
-consumes it via a pinned PyPI dependency (`anukriti-pgx-core==0.2.1`)
+consumes it via a pinned PyPI dependency (`anukriti-pgx-core==0.7.3`)
 and re-exports the phenotype engine through `rules/phenotype_rules.py`.
 
 When pgx-core releases a new version:
