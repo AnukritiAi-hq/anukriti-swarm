@@ -538,7 +538,7 @@ class SwarmRuntime:
         ),
     }
 
-    def _apply_population_aware_overrides(self, ctx: "UnifiedExecutionContext") -> None:
+    def _apply_population_aware_overrides(self, ctx: UnifiedExecutionContext) -> None:
         """Post-sufficiency hook: attach a named uncertainty flag for SAS
         patients carrying DPYD alleles whose South Asian toxicity evidence is
         contested in the primary literature.
@@ -652,7 +652,7 @@ class SwarmRuntime:
 
     def _run_llm_grounded_synthesis(
         self,
-        ctx: "UnifiedExecutionContext",
+        ctx: UnifiedExecutionContext,
         citations: list[Any],
     ) -> None:
         """Run LLMNarrator to produce a citation-validated grounded narrative.
@@ -678,6 +678,7 @@ class SwarmRuntime:
         run does not crash.
         """
         from ai.narrative.llm_narrator import LLMNarrator
+
         from core.orchestrator.boundary import GenerativeBoundaryViolation
         from core.runtime.citation_validator import CitationVerdict
 
@@ -920,8 +921,7 @@ def _pop_result_for(
         # reports the residual honestly.
         gene_prefix = f"allele:{ctx.gene}*"
         variant_sum = sum(
-            freq for nid, freq in pop_alleles_by_id.items()
-            if nid.startswith(gene_prefix)
+            freq for nid, freq in pop_alleles_by_id.items() if nid.startswith(gene_prefix)
         )
         baseline = max(0.0, 1.0 - variant_sum)
         return {

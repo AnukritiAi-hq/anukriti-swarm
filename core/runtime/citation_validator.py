@@ -17,7 +17,7 @@ Off-by-default; opt-in via SwarmRuntime(citation_validator=CitationValidator()).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -109,9 +109,14 @@ class CitationValidator:
         for sentence in sentences:
             # Skip structural/header sentences
             if _SKIP_PATTERNS.match(sentence) or len(sentence) < 15:
-                validations.append(SentenceValidation(
-                    text=sentence, citations_found=(), rule=CitationRule.C5, is_valid=True,
-                ))
+                validations.append(
+                    SentenceValidation(
+                        text=sentence,
+                        citations_found=(),
+                        rule=CitationRule.C5,
+                        is_valid=True,
+                    )
+                )
                 cited_count += 1
                 continue
 
@@ -121,9 +126,14 @@ class CitationValidator:
                 # No citation token → C1
                 rules_triggered.add(CitationRule.C1)
                 uncited.append(sentence)
-                validations.append(SentenceValidation(
-                    text=sentence, citations_found=(), rule=CitationRule.C1, is_valid=False,
-                ))
+                validations.append(
+                    SentenceValidation(
+                        text=sentence,
+                        citations_found=(),
+                        rule=CitationRule.C1,
+                        is_valid=False,
+                    )
+                )
                 continue
 
             # Check each citation against the record set
@@ -147,12 +157,14 @@ class CitationValidator:
             if sentence_valid:
                 cited_count += 1
 
-            validations.append(SentenceValidation(
-                text=sentence,
-                citations_found=citation_ids,
-                rule=CitationRule.C5 if sentence_valid else CitationRule.C2,
-                is_valid=sentence_valid,
-            ))
+            validations.append(
+                SentenceValidation(
+                    text=sentence,
+                    citations_found=citation_ids,
+                    rule=CitationRule.C5 if sentence_valid else CitationRule.C2,
+                    is_valid=sentence_valid,
+                )
+            )
 
         # Determine overall verdict
         if fabricated:

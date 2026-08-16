@@ -422,9 +422,7 @@ class EvidenceCoverageAnalyzer:
         if not refs:
             for ev in run.get("retrieval_results") or []:
                 ev_genes = ev.get("genes") or ev.get("gene_tags") or ()
-                if gene_u and ev_genes and gene_u not in (
-                    str(g).upper() for g in ev_genes
-                ):
+                if gene_u and ev_genes and gene_u not in (str(g).upper() for g in ev_genes):
                     continue
                 text = " ".join(
                     [
