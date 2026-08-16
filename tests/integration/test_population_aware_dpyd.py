@@ -181,10 +181,10 @@ class TestContestedAlleleFlag:
         runtime.run(ctx)
         reason = _flags(ctx)[0]["reason"]
 
-        assert "0.02538" in reason      # actionable panel sum, CSA
-        assert "0.52921" in reason      # Normal-function alleles sum, CSA
-        assert "0.00000" in reason      # *13 in CSA
-        assert "71.1%" in reason        # what D-TORCH observed
+        assert "0.02538" in reason  # actionable panel sum, CSA
+        assert "0.52921" in reason  # Normal-function alleles sum, CSA
+        assert "0.00000" in reason  # *13 in CSA
+        assert "71.1%" in reason  # what D-TORCH observed
 
     def test_reason_carries_the_cpic_residual_risk_caveat(self, runtime):
         """The safety message must be CPIC's own words, not ours."""
@@ -193,9 +193,9 @@ class TestContestedAlleleFlag:
         reason = _flags(ctx)[0]["reason"]
 
         assert "does not fully rule out DPD defects" in reason
-        assert "29152729" in reason     # the CPIC guideline
-        assert "22.7%" in reason        # wild-type rate, systemic
-        assert "30348537" in reason     # Henricks 2018
+        assert "29152729" in reason  # the CPIC guideline
+        assert "22.7%" in reason  # wild-type rate, systemic
+        assert "30348537" in reason  # Henricks 2018
 
     def test_reason_never_claims_elevated_risk(self, runtime):
         """A named uncertainty is not a risk finding."""
@@ -205,9 +205,7 @@ class TestContestedAlleleFlag:
             reason = _flags(ctx)[0]["reason"]
             assert "not evidence that this patient is at elevated risk" in reason
 
-    def test_star6_is_flagged_with_the_disagreement_running_against_cpic(
-        self, runtime
-    ):
+    def test_star6_is_flagged_with_the_disagreement_running_against_cpic(self, runtime):
         """*6 is the case where clinical evidence points against CPIC.
 
         pgx-core 0.7.2 restored *6 to CPIC's Normal function after it had been

@@ -183,7 +183,10 @@ class FakePopIndexer:
     evidence: dict[SuperPopulation, list[str]] = field(default_factory=dict)
 
     def alleles_for(
-        self, pop: SuperPopulation, *, gene: str | None = None,
+        self,
+        pop: SuperPopulation,
+        *,
+        gene: str | None = None,
     ) -> list[str]:
         # ``gene`` mirrors the real ``PopulationGraphIndexer.alleles_for``
         # kwarg (added when the bias detector started gene-scoping its

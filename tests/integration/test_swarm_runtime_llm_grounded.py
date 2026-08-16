@@ -88,9 +88,9 @@ class TestTemplateModeRegression:
         assert report.grounded_narrative is None
 
     def test_template_string_mode_has_no_grounded_narrative(self) -> None:
-        report = SwarmRuntime(
-            event_stream=InMemoryEventStream(), synthesis_mode="template"
-        ).run(_sas_clopidogrel())
+        report = SwarmRuntime(event_stream=InMemoryEventStream(), synthesis_mode="template").run(
+            _sas_clopidogrel()
+        )
         assert report.grounded_narrative is None
 
     def test_default_vs_template_recommendation_identical(self) -> None:
