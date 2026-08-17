@@ -32,8 +32,12 @@ mypy==1.10.0
 # Pin the patch version exactly — the library is the biomedical truth
 # layer and new versions may contain CPIC table updates that require
 # regression review in Swarm before adoption. Bump this pin deliberately.
-# Pinned exactly per AGENTS.md. 0.8.1 reviewed and approved 2026-08-17 (see
-# anukriti-pgx-core docs/REGRESSION_REVIEW_0.7.3_to_0.8.1.md): 1901 genotype
-# cases, every difference confined to TPMT, DPYD bit-identical. Carries the
-# TPMT genotype-inversion safety fix.
-anukriti-pgx-core==0.8.1
+# Pinned exactly per AGENTS.md. 0.9.0 reviewed and approved 2026-08-17 (see
+# anukriti-pgx-core docs/REGRESSION_REVIEW_0.8.2_to_0.9.0.md): 1,991 genotype
+# cases, SAFETY_FIX 64 / NOMENCLATURE 18 / SAME 1909, nothing more permissive.
+# DPYD IS touched here (HapB3 called from both loci, new hapb3_basis field, four
+# newly callable alleles). Swarm's 287 tests pass unchanged against it, but a
+# tag-only HapB3 sample now carries the allele label c.1236G>A rather than
+# HapB3 — anything added here that string-matches the old label must account
+# for it.
+anukriti-pgx-core==0.9.0
