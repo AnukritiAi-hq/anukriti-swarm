@@ -50,8 +50,7 @@ Build the known-variant GenomeIndia overlay:
 Regenerate SAS override candidates from the in-repo gnomAD extract:
 
 ```bash
-./venv/bin/python scripts/discover_sas_override_candidates.py \
-  --gnomad-eur datasets/pharmfreq/gnomad_pgx_nfe_sas_frequencies.jsonl
+./venv/bin/python scripts/discover_sas_override_candidates.py
 ```
 
 Expected output counts:

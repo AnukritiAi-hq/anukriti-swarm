@@ -58,6 +58,7 @@ DEFAULT_HIGHFREQ = (
     / "pharmfreq"
     / "genomeindia_9768_highfreq_candidates.jsonl"
 )
+DEFAULT_GNOMAD = REPO_ROOT / "datasets" / "pharmfreq" / "gnomad_pgx_nfe_sas_frequencies.jsonl"
 DEFAULT_OUT = REPO_ROOT / "datasets" / "pharmfreq" / "sas_override_candidates.jsonl"
 DEFAULT_GOLD_OUT = REPO_ROOT / "datasets" / "pharmfreq" / "sas_override_gold_candidates.jsonl"
 INDIAN_AF_THRESHOLD = 0.05
@@ -418,7 +419,7 @@ def _write_jsonl(path: Path, rows: Sequence[SasOverrideCandidate]) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--highfreq", type=Path, default=DEFAULT_HIGHFREQ)
-    ap.add_argument("--gnomad-eur", type=Path, required=True)
+    ap.add_argument("--gnomad-eur", type=Path, default=DEFAULT_GNOMAD)
     ap.add_argument("--eur-field", help="Exact gnomAD TSV/JSONL/VCF EUR AF field to use")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument(
