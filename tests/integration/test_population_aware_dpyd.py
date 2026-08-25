@@ -34,6 +34,7 @@ from core.runtime.events import InMemoryEventStream, RuntimeEventKind
 from core.runtime.runtime import SwarmRuntime
 
 RULE = "P1_SAS_DPYD_CONTESTED"
+GOLD_RULE = "P2_SAS_ENRICHED_EUR_RARE"
 
 
 @pytest.fixture
@@ -53,6 +54,11 @@ def _ctx(population: SuperPopulation, genotype: str, gene: str = "DPYD"):
 def _flags(report_ctx) -> list[dict]:
     checkpoint = (report_ctx.evidence_state or {}).get("checkpoint") or {}
     return checkpoint.get("population_uncertainty_flags", [])
+
+
+def _sas_override_flags(report_ctx) -> list[dict]:
+    checkpoint = (report_ctx.evidence_state or {}).get("checkpoint") or {}
+    return checkpoint.get("sas_override_evidence_flags", [])
 
 
 def _events(runtime: SwarmRuntime, kind: RuntimeEventKind) -> list:
@@ -252,6 +258,50 @@ class TestScopeIsNarrow:
         ctx = _ctx(SuperPopulation.SAS, "*2/*2", gene="CYP2C19")
         runtime.run(ctx)
         assert _flags(ctx) == []
+
+
+class TestSasOverrideGoldEvidence:
+    """Gold GenomeIndia/gnomAD candidates attach as evidence, not calls."""
+
+    def test_dpyd_crc_gold_candidate_is_attached_by_rsid(self, runtime):
+        ctx = _ctx(SuperPopulation.SAS, "rs549104824")
+        runtime.run(ctx)
+
+        flags = _sas_override_flags(ctx)
+        assert len(flags) == 1
+        flag = flags[0]
+        assert flag["rule"] == GOLD_RULE
+        assert flag["gene"] == "DPYD"
+        assert flag["rsids"] == ["rs549104824"]
+        assert flag["override_type"] == "sas_enriched_eur_rare"
+        assert flag["af_indian_9768"] == 0.108291
+        assert flag["af_nfe_gnomad"] == 0.00013283
+        assert flag["af_ratio"] == 815.26
+
+        transitions = [
+            e
+            for e in _events(runtime, RuntimeEventKind.UNCERTAINTY_TRANSITION)
+            if e.payload.get("rule") == GOLD_RULE
+        ]
+        assert len(transitions) == 1
+        assert transitions[0].payload["allows_synthesis_changed"] is False
+
+    def test_gold_candidate_flag_does_not_block_synthesis(self, runtime):
+        ctx = _ctx(SuperPopulation.SAS, "rs549104824")
+        ctx.evidence_state = {"checkpoint": {"allows_synthesis": True, "blocking_reason": ""}}
+
+        runtime._apply_population_aware_overrides(ctx)
+
+        checkpoint = ctx.evidence_state["checkpoint"]
+        assert checkpoint["allows_synthesis"] is True
+        assert checkpoint["blocking_reason"] == ""
+        assert len(checkpoint["sas_override_evidence_flags"]) == 1
+
+    def test_gold_candidate_is_sas_scoped(self, runtime):
+        ctx = _ctx(SuperPopulation.EUR, "rs549104824")
+        runtime.run(ctx)
+
+        assert _sas_override_flags(ctx) == []
 
 
 class TestFrequencyRecordsMatchRealGnomad:

@@ -10,10 +10,11 @@ Future: Will be backed by MCP Dataset server for real gnomAD/PharmFreq access.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from datasets.pharmfreq.allele_frequencies import (
     ALL_FREQUENCIES,
+    GENOMEINDIA_FREQUENCIES,
     GNOMAD_FREQUENCIES,
     SGDP_FREQUENCIES,
     AlleleFrequencyRecord,
@@ -33,7 +34,7 @@ class FrequencyLookupResult:
     source: str
     version: str
     found: bool
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class FrequencyStore:
@@ -48,17 +49,24 @@ class FrequencyStore:
         records: list[AlleleFrequencyRecord] | None = None,
         use_gnomad: bool = False,
         use_sgdp: bool = False,
+        use_genomeindia: bool = False,
     ) -> None:
         self._records = list(records) if records is not None else list(ALL_FREQUENCIES)
         # Overlay real BigQuery-ingested frequencies (pinned artifacts) when
         # opted in; later records win on a shared (gene, allele, population)
-        # key. gnomAD has larger sample sizes (8k–56k) so it overlays last
-        # (wins over SGDP n=22–75). SGDP adds coverage for variants/pops
+        # key. gnomAD has larger sample sizes (8k-56k) so it overlays last
+        # (wins over SGDP n=22-75). SGDP adds coverage for variants/pops
         # absent from gnomAD. Off by default to preserve byte-identical demos.
         if use_sgdp:
             self._records += SGDP_FREQUENCIES
         if use_gnomad:
             self._records += GNOMAD_FREQUENCIES
+        # GenomeIndia is aggregate Indian AF from the public summary stats.
+        # It intentionally overlays last for SAS because it is the most
+        # population-relevant public Indian WGS frequency source we have, but
+        # it is not sub-population granular unless a future artifact proves so.
+        if use_genomeindia:
+            self._records += GENOMEINDIA_FREQUENCIES
         self._index: dict[tuple[str, str, str], AlleleFrequencyRecord] = {}
         self._build_index()
 

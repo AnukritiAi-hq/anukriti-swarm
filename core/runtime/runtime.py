@@ -37,6 +37,7 @@ Scope firewall
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -56,6 +57,7 @@ from core.runtime.events import (
     RuntimeEventKind,
 )
 from core.runtime.report import UnifiedExecutionReport
+from population.data.sas_override_store import gold_candidates_by_rsid
 from retrieval.evidence.documents import (
     CPIC_DOCUMENTS,
     PHARMGKB_DOCUMENTS,
@@ -539,15 +541,17 @@ class SwarmRuntime:
     }
 
     def _apply_population_aware_overrides(self, ctx: UnifiedExecutionContext) -> None:
-        """Post-sufficiency hook: attach a named uncertainty flag for SAS
-        patients carrying DPYD alleles whose South Asian toxicity evidence is
-        contested in the primary literature.
+        """Post-sufficiency hook: attach named population-aware evidence flags.
 
-        Deliberately does **not** mutate ``allows_synthesis``. The
-        deterministic sufficiency verdict from Stage 4 stands; this hook only
-        annotates it. See ``_SAS_DPYD_CONTESTED_ALLELES`` for the audit trail.
+        Deliberately does **not** mutate ``allows_synthesis``. The deterministic
+        sufficiency verdict from Stage 4 stands; this hook only annotates it.
         """
-        if ctx.gene != "DPYD" or ctx.population.value != "SAS":
+        if ctx.population.value != "SAS":
+            return
+
+        self._apply_sas_override_candidate_flags(ctx)
+
+        if ctx.gene != "DPYD":
             return
 
         alleles = [a.strip() for a in ctx.genotype.split("/")]
@@ -607,6 +611,53 @@ class SwarmRuntime:
                 "rule": "P1_SAS_DPYD_CONTESTED",
                 "alleles": seen,
                 "flag_reason": flag_reason,
+                "allows_synthesis_changed": False,
+            },
+        )
+
+    def _apply_sas_override_candidate_flags(self, ctx: UnifiedExecutionContext) -> None:
+        """Attach gold GenomeIndia/gnomAD SAS-enrichment evidence by rsID.
+
+        This is evidence metadata, not a genotype or phenotype caller. It only
+        fires when the input genotype/question string explicitly contains an
+        rsID present in the pinned gold-candidate artifact.
+        """
+        by_rsid = gold_candidates_by_rsid()
+        tokens = set(_genotype_tokens(ctx.genotype)) | set(_genotype_tokens(ctx.question))
+        matches = [
+            candidate
+            for rsid, candidate in by_rsid.items()
+            if rsid in tokens and candidate.gene == ctx.gene
+        ]
+        if not matches:
+            return
+
+        deduped: list[Any] = []
+        seen: set[tuple[str, int, str, str]] = set()
+        for candidate in matches:
+            key = (candidate.chrom, candidate.pos, candidate.ref, candidate.alt)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(candidate)
+
+        flags = [candidate.to_flag() for candidate in deduped]
+        checkpoint = (ctx.evidence_state or {}).get("checkpoint") or {}
+        checkpoint["sas_override_evidence_flags"] = [
+            *checkpoint.get("sas_override_evidence_flags", []),
+            *flags,
+        ]
+        ctx.evidence_state = dict(ctx.evidence_state or {})
+        ctx.evidence_state["checkpoint"] = checkpoint
+
+        self._emit(
+            RuntimeEventKind.UNCERTAINTY_TRANSITION,
+            ctx,
+            payload={
+                "rule": "P2_SAS_ENRICHED_EUR_RARE",
+                "gene": ctx.gene,
+                "rsids": sorted({rsid for flag in flags for rsid in flag["rsids"]}),
+                "flag_count": len(flags),
                 "allows_synthesis_changed": False,
             },
         )
@@ -1074,6 +1125,12 @@ def _researcher_narrative(ctx: UnifiedExecutionContext, citations: list[str]) ->
         f"CPIC activity score. Population {ctx.population.value}: "
         f"evidence grounded on {len(citations)} source(s)."
     )
+
+
+def _genotype_tokens(value: str) -> list[str]:
+    """Extract stable variant identifiers from a genotype/question string."""
+
+    return re.findall(r"rs\d+", value or "")
 
 
 __all__ = ["SwarmRuntime"]

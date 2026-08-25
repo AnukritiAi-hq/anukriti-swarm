@@ -578,8 +578,8 @@ ALL_FREQUENCIES = (
 # curated ALL_FREQUENCIES so the byte-identical demo contract is
 # preserved; opt in via FrequencyStore(use_gnomad=True).
 
-import json as _json
-from pathlib import Path as _Path
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
 
 _DATA_DIR = _Path(__file__).resolve().parent
 
@@ -622,5 +622,17 @@ def load_sgdp_frequencies() -> list[AlleleFrequencyRecord]:
     return _load_artifact("sgdp_frequencies.jsonl")
 
 
+def load_genomeindia_frequencies() -> list[AlleleFrequencyRecord]:
+    """Load the pinned GenomeIndia aggregate-frequency artifact.
+
+    GenomeIndia's public summary-stat release is aggregate Indian AF, not
+    per-community AF in the UCSC build notes. Records are therefore mapped to
+    Anukriti's SAS bucket with source/version provenance naming GenomeIndia
+    explicitly; do not treat them as 83-population stratified frequencies.
+    """
+    return _load_artifact("genomeindia_9768_summary_frequencies.jsonl")
+
+
 GNOMAD_FREQUENCIES: list[AlleleFrequencyRecord] = load_gnomad_frequencies()
 SGDP_FREQUENCIES: list[AlleleFrequencyRecord] = load_sgdp_frequencies()
+GENOMEINDIA_FREQUENCIES: list[AlleleFrequencyRecord] = load_genomeindia_frequencies()
