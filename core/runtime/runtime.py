@@ -1069,21 +1069,55 @@ def _patient_narrative(ctx: UnifiedExecutionContext, citations: list[str]) -> st
             f"directly.{refs}"
         )
     if ctx.gene == "DPYD":
-        # Map the diplotype back to CPIC 2017+2018 fluoropyrimidine
-        # phenotype + dose recommendation. The full text below is the
-        # patient-facing version; researcher-narrative carries the
-        # activity-score citation (PMID:29152729) and is rendered by
-        # _researcher_narrative().
-        diplotype = ctx.genotype
+        # The phenotype comes from the engine, NOT from re-reading the
+        # diplotype string here.
+        #
+        # This used to classify the genotype itself against two hardcoded
+        # literal sets:
+        #
+        #     no_func_set  = {"*2A", "*13"}
+        #     dec_func_set = {"c.2846A>T", "HapB3"}
+        #
+        # The engine's pinned DPYD table carries twelve actionable alleles.
+        # Those four sets covered four of them, so *8, *10, *12,
+        # c.1129-5923C>G, c.1236G>A, c.1475C>T, c.2279C>T and c.2639G>T all
+        # fell past both branches and reached the Normal Metabolizer
+        # fallback, which tells the PATIENT to take a standard dose.
+        #
+        # Two of those matter most here. c.2279C>T is 0.63% in GenomeIndia
+        # (n=9,768) and 0.000% in Europeans — it is the allele the whole
+        # South Asian coverage argument rests on. c.1236G>A is how the
+        # engine labels a tag-only HapB3 call from 0.9.0 onward, which is
+        # the modal Indian HapB3 presentation, so the literal "HapB3" in
+        # dec_func_set stopped matching the common case the moment that
+        # labelling landed.
+        #
+        # Re-deriving a clinical conclusion that the deterministic layer has
+        # already reached is the defect, not the particular sets that were
+        # missing. A second implementation can only ever agree with the
+        # first by coincidence, and when it disagrees nothing detects it —
+        # `core/verification/safety.py` re-derives from the same two allele
+        # strings, so it agrees with itself and passes. So this reads the
+        # engine's answer instead of forming its own.
         drug_label = "5-fluorouracil" if ctx.drug == "fluorouracil" else ctx.drug
-        no_func_set = {"*2A", "*13"}
-        dec_func_set = {"c.2846A>T", "HapB3"}
-        parts = [p.strip() for p in diplotype.split("/") if p.strip()]
-        no_func = sum(1 for p in parts if p in no_func_set)
-        dec_func = sum(1 for p in parts if p in dec_func_set)
-        # Phenotype mirrors CPIC Table 5 with pgx-core's pinned overlay.
-        is_pm = no_func >= 2 or (no_func == 1 and dec_func == 1)
-        is_im = (no_func == 1) or (dec_func >= 1 and no_func == 0)
+        diplotype = ctx.genotype
+        phenotype = str(_phenotype_for(ctx).get("phenotype") or "").strip()
+        is_pm = phenotype == "Poor Metabolizer"
+        is_im = phenotype == "Intermediate Metabolizer"
+        if not (is_pm or is_im) and phenotype != "Normal Metabolizer":
+            # Indeterminate, or a phenotype this narrative has no text for.
+            # Previously there was no such branch and anything unrecognised
+            # reached the Normal Metabolizer fallback — a refusal rendered as
+            # an all-clear, which is the worst available failure mode.
+            return (
+                f"Your DPYD {diplotype} genotype did not resolve to a CPIC "
+                f"phenotype ({phenotype or 'no phenotype returned'}), so no "
+                f"{drug_label} dosing statement can be made from it. This is "
+                f"not a negative result and it is not an all-clear. A "
+                f"phenotyping test (DPD enzyme activity, or the "
+                f"uracil/dihydrouracil ratio) is the gold-standard backstop "
+                f"per CPIC.{refs}"
+            )
         if is_pm:
             return (
                 f"Your DPYD {diplotype} genotype indicates Poor Metabolizer "
