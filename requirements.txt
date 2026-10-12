@@ -40,4 +40,4 @@ mypy==1.10.0
 # tag-only HapB3 sample now carries the allele label c.1236G>A rather than
 # HapB3 — anything added here that string-matches the old label must account
 # for it.
-anukriti-pgx-core==0.9.0
+anukriti-pgx-core==0.10.0
