@@ -38,7 +38,6 @@ cannot silently reintroduce the gap.
 from __future__ import annotations
 
 import pytest
-
 from core.models.population import SuperPopulation
 from core.runtime.context import UnifiedExecutionContext
 from core.runtime.runtime import _patient_narrative, _phenotype_for
