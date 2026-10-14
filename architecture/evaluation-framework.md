@@ -1,7 +1,7 @@
 # Evaluation & Benchmarking Framework — Anukriti Swarm
 
 **Status:** production — running against every commit
-**Last full sweep:** 52/61 suite cases (85%), 4/4 stress, 3/3 ancestry, verdict=degraded (known benchmark-data bugs documented below)
+**Last full sweep:** 54/61 suite cases (89%), re-run 2026-10-14 in the repo venv (engine 0.9.0), 4/4 stress, 3/3 ancestry, verdict=degraded (known benchmark-data bugs documented below)
 
 ## Purpose
 
@@ -87,7 +87,7 @@ From the most recent full sweep:
 
 | Metric | Value |
 |---|---|
-| **Suite pass rate** | 52/61 (85%) |
+| **Suite pass rate** | 54/61 (89%) |
 | **Grounding rate** | 59.06% (75/127 sources resolve in MCP) |
 | **Unsupported-claim rate** | 5.26% (2/38 claims with zero grounded sources) |
 | **Mean orchestration latency** | 0.83 ms (p95: 0.86 ms) |
@@ -146,7 +146,7 @@ None of these block deployment — they're honest signals the framework is desig
 # Full sweep — ~15 seconds, no network
 python -m demos.evaluation_demo
 
-# Generic LLM vs Anukriti side-by-side
+# Scripted generic-LLM MOCK vs Anukriti (no model is called)
 python -m demos.comparison_demo
 
 # Individual suite against a subset
@@ -161,6 +161,15 @@ print(s.pass_rate, s.aggregates)
 Every number above is regenerated on every run from the same deterministic scenario catalog. No hidden state, no cached verdicts, no LLM calls in the hot path.
 
 ## Generic LLM vs Anukriti comparison
+
+> ⚠️ **This table is not a measurement of any language model.** The
+> "Generic LLM" column is a scripted mock defined in `demos/comparison_demo.py`
+> whose failure modes are authored in that file; no model is invoked and no
+> network call is made. The 0/3 scores are the mock behaving as written, so
+> this comparison can demonstrate the pipeline's checks firing but is **not
+> evidence that an LLM performs worse than the engine**. Measuring that would
+> require running a real model through the same scenarios, which has never
+> been done. Flagged 2026-10-14.
 
 `demos/comparison_demo.py` runs three scenarios side-by-side against a scripted generic-LLM mock. Encoded failure modes: population-blind recommendation, confident phenotype drift on `*1/*1`, fabricated PMID citation.
 
