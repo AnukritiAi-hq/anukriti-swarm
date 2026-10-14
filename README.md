@@ -9,7 +9,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green)]()
 [![Agents: 9](https://img.shields.io/badge/agents-9%20specialists-purple)]()
 [![CI](https://github.com/AnukritiAi-hq/anukriti-swarm/actions/workflows/ci.yml/badge.svg)](https://github.com/AnukritiAi-hq/anukriti-swarm/actions/workflows/ci.yml)
-[![Tests: 234](https://img.shields.io/badge/tests-234%20passing-brightgreen)]()
+[![Tests: 321](https://img.shields.io/badge/tests-321%20passing-brightgreen)]()
 
 ---
 
@@ -128,7 +128,7 @@ python -m demos.showcase
 |--------|-------|
 | End-to-end latency | < 2ms |
 | Verification checks | 6/6 pass |
-| Evidence grounding | 100% |
+| Evidence grounding | **59.06%** |  <!-- corrected 2026-10-14: the README claimed 100%; `python -m demos.evaluation_demo` measures grounding_rate 0.5906 -->
 | Confidence score | 0.950 |
 | Agents in swarm | 9 specialists |
 | Genes covered | CYP2D6, CYP2C19, HLA-B |
