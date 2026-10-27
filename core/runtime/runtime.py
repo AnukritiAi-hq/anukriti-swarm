@@ -738,6 +738,7 @@ class SwarmRuntime:
             CitationVerdict.MISSING_CITATIONS: "C1",
             CitationVerdict.FABRICATED_CITATION: "C2",
             CitationVerdict.MALFORMED: "C4",
+            CitationVerdict.UNSUPPORTED_QUANTITY: "C6",
         }
 
         evidence_records = [

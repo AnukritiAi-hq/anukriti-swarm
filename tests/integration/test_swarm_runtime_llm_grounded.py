@@ -157,6 +157,26 @@ class TestGroundedModeFallback:
         # The deterministic recommendation is untouched.
         assert report.final_recommendation["allows_synthesis"] is True
 
+    def test_unsupported_quantity_drops_text_and_names_c6(self) -> None:
+        """A drifted dose must fall back exactly like a bad citation."""
+        from core.runtime.citation_validator import CitationVerdict
+
+        bad_text = "Reduce the clopidogrel dose by 40% [CPIC, PMID:35034351]."
+        runtime = SwarmRuntime(
+            event_stream=InMemoryEventStream(),
+            synthesis_mode="llm_grounded",
+            llm_narrator=_MockNarrator(bad_text, CitationVerdict.UNSUPPORTED_QUANTITY),
+        )
+        report = runtime.run(_sas_clopidogrel())
+        grounded = report.grounded_narrative
+        assert grounded is not None
+        assert grounded["text"] == ""
+        assert grounded["used_fallback"] is True
+        assert grounded["fallback_rule"] == "C6"
+        assert grounded["fallback_to"] == "deterministic"
+        assert grounded["unvalidated_text"] == bad_text
+        assert report.final_recommendation["allows_synthesis"] is True
+
     def test_fallback_emits_safe_abstention_for_grounded(self) -> None:
         from core.runtime.citation_validator import CitationVerdict
 
