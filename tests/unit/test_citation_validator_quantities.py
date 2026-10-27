@@ -12,7 +12,6 @@ Pure unit tests, no LLM, no network.
 from __future__ import annotations
 
 import pytest
-
 from core.runtime.citation_validator import (
     CitationRule,
     CitationValidator,
@@ -42,9 +41,7 @@ def _validator() -> CitationValidator:
 class TestC6Fires:
     def test_cited_sentence_with_a_drifted_dose_is_rejected(self) -> None:
         text = "Reduce the fluorouracil starting dose by 40% [CPIC, PMID:29152729]."
-        trace = _validator().validate(
-            text, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(text, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.verdict is CitationVerdict.UNSUPPORTED_QUANTITY
         assert CitationRule.C6 in trace.rules_triggered
         assert trace.unsupported_quantities == ("40%",)
@@ -52,33 +49,25 @@ class TestC6Fires:
         assert trace.fabricated_citations == ()
 
     def test_short_sentence_is_still_checked(self) -> None:
-        """"Reduce by 40%." is 14 chars and skips the citation rules."""
-        trace = _validator().validate(
-            "Reduce by 40%.", {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        """ "Reduce by 40%." is 14 chars and skips the citation rules."""
+        trace = _validator().validate("Reduce by 40%.", {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.verdict is CitationVerdict.UNSUPPORTED_QUANTITY
         assert trace.unsupported_quantities == ("40%",)
 
     def test_invented_body_surface_dose_is_rejected(self) -> None:
         text = "Give capecitabine 625 mg/m2 twice daily [CPIC, PMID:29152729]."
-        trace = _validator().validate(
-            text, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(text, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.unsupported_quantities == ("625 mg/m2",)
 
     def test_quantity_outranks_a_missing_citation(self) -> None:
         text = "Reduce the fluorouracil starting dose by 40% in these patients."
-        trace = _validator().validate(
-            text, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(text, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.verdict is CitationVerdict.UNSUPPORTED_QUANTITY
         assert CitationRule.C1 in trace.rules_triggered
 
     def test_fabricated_citation_still_outranks_a_quantity(self) -> None:
         text = "Reduce the dose by 40% [CPIC, PMID:99999999]."
-        trace = _validator().validate(
-            text, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(text, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.verdict is CitationVerdict.FABRICATED_CITATION
         assert trace.unsupported_quantities == ("40%",)
 
@@ -91,9 +80,7 @@ class TestC6Fires:
 class TestC6StaysSilent:
     def test_matching_dose_passes(self) -> None:
         text = "Reduce the fluorouracil starting dose by 50% [CPIC, PMID:29152729]."
-        trace = _validator().validate(
-            text, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(text, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.verdict is CitationVerdict.ALL_CITED
         assert trace.unsupported_quantities == ()
 
@@ -116,9 +103,7 @@ class TestC6StaysSilent:
         ],
     )
     def test_identifiers_are_not_quantities(self, sentence: str) -> None:
-        trace = _validator().validate(
-            sentence, {"PMID:29152729"}, grounded_context=CONTEXT
-        )
+        trace = _validator().validate(sentence, {"PMID:29152729"}, grounded_context=CONTEXT)
         assert trace.unsupported_quantities == (), sentence
         assert trace.verdict is CitationVerdict.ALL_CITED
 
