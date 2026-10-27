@@ -206,7 +206,11 @@ class LLMNarrator:
         latency_ms = (time.perf_counter() - t0) * 1000
 
         # Validate citations
-        validation = self._validator.validate(text, source_ids if source_ids else None)
+        validation = self._validator.validate(
+            text,
+            source_ids if source_ids else None,
+            grounded_context=context_block,
+        )
 
         # If fabricated citations detected, raise boundary violation
         if validation.verdict == CitationVerdict.FABRICATED_CITATION:
